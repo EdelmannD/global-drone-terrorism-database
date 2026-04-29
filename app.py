@@ -10,45 +10,30 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. UI Javítás: Világos feliratok sötét háttéren
+# 2. UI Javítás: Világos feliratok és stílus
 st.markdown("""
     <style>
-    /* Fő háttér */
     .main { background-color: #0e1117; }
-    
-    /* Metrika kártyák stílusa */
     [data-testid="stMetric"] {
         background-color: #1f2937;
         padding: 20px;
         border-radius: 12px;
         border: 1px solid #374151;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
-    
-    /* Feliratok színeinek kényszerítése */
-    [data-testid="stMetricLabel"] {
-        color: #9ca3af !important; /* Világosszürke címke */
-        font-size: 1rem !important;
-    }
-    [data-testid="stMetricValue"] {
-        color: #ffffff !important; /* Hófehér érték */
-        font-weight: bold !important;
-    }
-    
-    /* Sidebar szövegek */
-    .css-1d391kg { color: #ffffff; }
+    [data-testid="stMetricLabel"] { color: #9ca3af !important; font-size: 1rem !important; }
+    [data-testid="stMetricValue"] { color: #ffffff !important; font-weight: bold !important; }
     </style>
     """, unsafe_allow_html=True)
 
 st.title("🛸 Global Drone Terrorism Database (GDTD)")
 st.markdown("---")
 
-# 3. Adatbetöltő függvény (Sep=, hiba kezelésével)
+# 3. Adatbetöltő függvény - Precízebb oszlopkezeléssel
 @st.cache_data
 def load_data():
     filename = "Acled_GTD_Drone_Database_20260429.csv"
     
-    # Első sor ellenőrzése a "sep=" metaadat miatt
+    # "sep=" sor kezelése
     with open(filename, 'r', encoding='utf-8-sig') as f:
         first_line = f.readline().strip()
     
@@ -59,57 +44,70 @@ def load_data():
         skiprows=skip, 
         sep=None, 
         engine='python', 
-        encoding='utf-8-sig',
-        on_bad_lines='skip'
+        encoding='utf-8-sig'
     )
 
-    # Tisztítás
+    # Oszlopnevek tisztítása
     df.columns = [str(c).strip().lower() for c in df.columns]
+    
+    # Eltávolítjuk az üres vagy "unnamed" oszlopokat
     df = df.loc[:, ~df.columns.str.contains('^unnamed')]
+    
     return df
 
-# 4. Logika és Megjelenítés
 try:
     df = load_data()
 
-    # Oszlopok beazonosítása
+    # --- INTELLIGENSEBB OSZLOPKERESÉS ---
+    # Olyan oszlopot keresünk az országhoz, ami SZÖVEGES (object típusú)
+    # és a nevében benne van, hogy 'country' vagy 'ország'
+    country_col = next((c for c in df.columns if ('country' in c or 'ország' in c) 
+                       and df[c].dtype == 'object'), None)
+    
+    # Ha így sem találja, megpróbáljuk az első olyan szöveges oszlopot, ami nem leírás
+    if not country_col:
+        text_cols = df.select_dtypes(include=['object']).columns
+        if len(text_cols) > 0:
+            country_col = text_cols[0]
+
     year_col = next((c for c in df.columns if 'year' in c or 'év' in c), None)
     lat_col = next((c for c in df.columns if 'lat' in c or 'szélesség' in c), None)
     lon_col = next((c for c in df.columns if 'lon' in c or 'hosszúság' in c), None)
-    country_col = next((c for c in df.columns if 'country' in c or 'ország' in c), None)
     fatalities_col = next((c for c in df.columns if 'fatal' in c or 'kill' in c or 'halott' in c), None)
 
     if year_col:
-        # --- SIDEBAR ---
+        # --- SIDEBAR SZŰRŐK ---
         st.sidebar.header("🛸 Szűrők")
+        
+        # Év szűrő
         min_y, max_y = int(df[year_col].min()), int(df[year_col].max())
         year_range = st.sidebar.slider("Időszak", min_y, max_y, (min_y, max_y))
-
-        # Szűrés
         filtered_df = df[(df[year_col] >= year_range[0]) & (df[year_col] <= year_range[1])]
         
+        # Ország szűrő - Most már biztosan a nevekkel
         if country_col:
-            countries = sorted(filtered_df[country_col].dropna().unique())
-            selected_countries = st.sidebar.multiselect("Ország szűrés", countries)
+            # Csak a nem üres, egyedi neveket vesszük ki
+            countries = sorted(filtered_df[country_col].dropna().unique().tolist())
+            selected_countries = st.sidebar.multiselect("Országok kiválasztása", countries)
             if selected_countries:
                 filtered_df = filtered_df[filtered_df[country_col].isin(selected_countries)]
 
-        # --- KPI KÁRTYÁK ---
+        # --- METRIKÁK ---
         m1, m2, m3 = st.columns(3)
         m1.metric("Összes incidens", f"{len(filtered_df)} db")
         
-        counts = filtered_df[country_col].nunique() if country_col else 0
-        m2.metric("Érintett országok", f"{counts} ország")
+        c_count = filtered_df[country_col].nunique() if country_col else 0
+        m2.metric("Érintett országok", f"{c_count} ország")
         
-        fats = int(filtered_df[fatalities_col].sum()) if fatalities_col else 0
-        m3.metric("Összes áldozat", f"{fats} fő")
+        f_sum = int(pd.to_numeric(filtered_df[fatalities_col], errors='coerce').sum()) if fatalities_col else 0
+        m3.metric("Összes áldozat", f"{f_sum} fő")
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # --- GRAFIKONOK ---
-        col_left, col_right = st.columns([2, 1])
+        # --- VIZUALIZÁCIÓK ---
+        c1, c2 = st.columns([2, 1])
 
-        with col_left:
+        with c1:
             st.subheader("📍 Földrajzi eloszlás")
             if lat_col and lon_col:
                 fig_map = px.scatter_mapbox(
@@ -117,36 +115,31 @@ try:
                     hover_name=country_col if country_col else None,
                     color_discrete_sequence=["#ff4b4b"], zoom=1.2, height=500
                 )
-                fig_map.update_layout(
-                    mapbox_style="carto-darkmatter", 
-                    margin={"r":0,"t":0,"l":0,"b":0},
-                    paper_bgcolor="rgba(0,0,0,0)"
-                )
+                fig_map.update_layout(mapbox_style="carto-darkmatter", margin={"r":0,"t":0,"l":0,"b":0}, paper_bgcolor="rgba(0,0,0,0)")
                 st.plotly_chart(fig_map, use_container_width=True)
 
-        with col_right:
+        with c2:
             st.subheader("📈 Időbeli trend")
             trend = filtered_df.groupby(year_col).size().reset_index(name='n')
             fig_line = px.line(trend, x=year_col, y='n', template="plotly_dark")
             fig_line.update_traces(line_color='#ff4b4b', line_width=3)
-            fig_line.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig_line, use_container_width=True)
 
-        # Top országok
         if country_col:
-            st.subheader("🌍 Legérintettebb területek")
+            st.subheader("🌍 Legérintettebb területek (Top 10)")
             top10 = filtered_df[country_col].value_counts().head(10).reset_index()
             top10.columns = ['Ország', 'Események']
-            fig_bar = px.bar(top10, x='Ország', y='Események', color='Események', 
-                             color_continuous_scale='Reds', template="plotly_dark")
+            fig_bar = px.bar(top10, x='Ország', y='Események', color='Események', color_continuous_scale='Reds', template="plotly_dark")
             st.plotly_chart(fig_bar, use_container_width=True)
 
     else:
-        st.error("Nem található 'Year' oszlop az adatokban.")
+        st.error("Nem sikerült azonosítani az 'Év' oszlopot.")
 
 except Exception as e:
-    st.error(f"Hiba történt az adatok betöltésekor: {e}")
+    st.error(f"Hiba történt: {e}")
 
-# Adatok táblázata
-if 'df' in locals() and st.checkbox("Nyers adatok megtekintése"):
-    st.dataframe(df)
+# Debug és Nyers adatok
+if st.checkbox("Nyers adatok és oszlop ellenőrzése"):
+    if 'country_col' in locals():
+        st.write(f"Beazonosított ország oszlop: **{country_col}**")
+    st.dataframe(df.head(50))
