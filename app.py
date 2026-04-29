@@ -11,7 +11,7 @@ st.markdown("Interactive analysis of drone-related incidents (1994-2024)")
 # Adatok betöltése (a te CSV-d neve legyen itt!)
 @st.cache_data
 def load_data():
-    df = pd.read_csv("Acled_GTD_Drone_Database_20260429.csv")
+    df = pd.read_csv("Acled_GTD_Drone_Database_20260429.csv", sep=";")
     return df
 
 df = load_data()
