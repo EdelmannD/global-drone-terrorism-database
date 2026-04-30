@@ -1,98 +1,67 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import io
 
-# --- 1. Page Config & Professional Styling ---
+# --- 1. Page Config & Styling ---
 st.set_page_config(page_title="GDTD Dashboard", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
     <style>
-    /* Alap háttér és szövegszín */
     .stApp { background-color: #121417; color: #E0E0E0; }
-    
-    /* Sidebar tisztítása */
     [data-testid="stSidebar"] { background-color: #1a1d21; border-right: 1px solid #333; }
-    
-    /* Diszkrét hivatkozás stílusa */
-    .small-citation {
-        font-size: 0.7rem;
-        color: #999999;
-        line-height: 1.3;
-        margin-bottom: 20px;
+    .small-citation { font-size: 0.7rem; color: #999999; line-height: 1.3; margin-bottom: 20px; }
+    [data-testid="stSidebar"] label, [data-testid="stSidebar"] .stMarkdown h3 { 
+        color: #CCCCCC !important; font-weight: normal !important; text-transform: uppercase; font-size: 0.85rem !important;
     }
-    
-    /* Világosszürke feliratok a menüben (Filters, Data Source, stb.) */
-    [data-testid="stSidebar"] label, 
-    [data-testid="stSidebar"] .stMarkdown h1, 
-    [data-testid="stSidebar"] .stMarkdown h2,
-    [data-testid="stSidebar"] .stMarkdown h3 { 
-        color: #CCCCCC !important; 
-        font-weight: normal !important;
-        text-transform: uppercase;
-        font-size: 0.85rem !important;
-    }
-
-    /* NEON BLUE Accent (Piros teljes kiirtása) */
     div[data-baseweb="slider"] > div > div { background-color: #00E5FF !important; } 
     div[data-baseweb="slider"] [role="slider"] { background-color: #00E5FF !important; border: 1px solid #00E5FF !important; }
     div[data-testid="stThumbValue"] { color: #00E5FF !important; }
-    
-    /* Multiselect kékítése */
     span[data-baseweb="tag"] { background-color: #00E5FF !important; color: #000 !important; }
-
-    /* Főcím sortöréssel */
-    .main-title {
-        font-size: 1.4rem;
-        font-weight: bold;
-        line-height: 1.1;
-        color: #FFFFFF;
-        margin-top: 0px;
-    }
-
-    /* Metric kártyák finomítása */
-    [data-testid="stMetric"] {
-        background-color: #1e2124;
-        padding: 5px 10px;
-        border-radius: 4px;
-        border-left: 3px solid #00E5FF;
-    }
+    .main-title { font-size: 1.4rem; font-weight: bold; line-height: 1.1; color: #FFFFFF; margin-top: 0px; }
+    [data-testid="stMetric"] { background-color: #1e2124; padding: 5px 10px; border-radius: 4px; border-left: 3px solid #00E5FF; }
     [data-testid="stMetricLabel"] { color: #999999 !important; font-size: 0.75rem !important; }
     [data-testid="stMetricValue"] { color: #FFFFFF !important; font-size: 1.2rem !important; }
-
     header[data-testid="stHeader"] { background-color: rgba(0,0,0,0) !important; }
-    .block-container { padding-top: 1rem; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. Data Loading ---
+# --- 2. Data Loading (Fixed for sep=; row) ---
 @st.cache_data
 def load_data():
     filename = "Acled_GTD_Drone_Database_20260429.csv"
     try:
-        df = pd.read_csv(filename, sep=';', engine='python', encoding='utf-8-sig')
+        # Megnézzük az első sort. Ha "sep=", akkor a másodiktól olvassuk.
+        with open(filename, 'r', encoding='utf-8-sig') as f:
+            first_line = f.readline()
+        
+        skip = 1 if "sep=" in first_line else 0
+        
+        df = pd.read_csv(filename, sep=';', skiprows=skip, engine='python', encoding='utf-8-sig')
         df.columns = df.columns.str.strip().str.lower()
-        # Adatforrás oszlop név tisztítása
+        
+        # Oszlop átnevezése angolra a kérésed szerint
         if 'adatforras' in df.columns:
             df.rename(columns={'adatforras': 'data_source'}, inplace=True)
+            
         return df
     except Exception as e:
+        st.error(f"Error: {e}")
         return pd.DataFrame()
 
 df_raw = load_data()
 
 if not df_raw.empty:
-    # Oszlop hozzárendelések
-    year_col = 'year' if 'year' in df_raw.columns else 'iyear'
+    # A te CSV-d alapján ezek a pontos oszlopnevek (kisbetűsítve):
     lat_col = 'latitude'
     lon_col = 'longitude'
+    year_col = 'year'
     country_col = 'country_txt'
     fatal_col = 'nkill'
-    group_col = 'gname'
     source_col = 'data_source'
+    group_col = 'gname'
     type_col = 'attacktype1_txt'
 
-    # --- 3. Sidebar (Discrete Citation & Clean Filters) ---
+    # --- 3. Sidebar ---
     with st.sidebar:
         st.markdown(f"""
         <div class="small-citation">
@@ -103,39 +72,30 @@ if not df_raw.empty:
         License: CC-BY 4.0
         </div>
         """, unsafe_allow_html=True)
-        
         st.markdown("### Filters")
         
-        # Data Source Filter (Angol felirattal)
+        # Data Source Filter
         sources = sorted(df_raw[source_col].unique()) if source_col in df_raw.columns else []
         selected_sources = st.multiselect("Data Source", sources, default=sources)
-        df_filtered = df_raw[df_raw[source_col].isin(selected_sources)] if sources else df_raw
+        df_filtered = df_raw[df_raw[source_col].isin(selected_sources)]
 
-        # Time Period
+        # Time Slider
         if year_col in df_filtered.columns:
             years = sorted(df_filtered[year_col].dropna().unique().astype(int))
             yr_range = st.select_slider("Time Period", options=years, value=(min(years), max(years)))
             df_filtered = df_filtered[(df_filtered[year_col] >= yr_range[0]) & (df_filtered[year_col] <= yr_range[1])]
 
-        # Country
-        countries = sorted(df_filtered[country_col].dropna().unique()) if country_col in df_filtered.columns else []
-        sel_countries = st.multiselect("Country", countries)
-        if sel_countries:
-            df_filtered = df_filtered[df_filtered[country_col].isin(sel_countries)]
-
-    # --- 4. Main Header Row (Title with Line Break + Metrics) ---
+    # --- 4. Main Header Row ---
     title_col, m1, m2, m3 = st.columns([1.8, 1, 1, 1])
-    
     with title_col:
         st.markdown('<p class="main-title">Global Drone<br>Terrorism Database</p>', unsafe_allow_html=True)
-    
     with m1:
         st.metric("INCIDENTS", len(df_filtered))
     with m2:
-        st.metric("COUNTRIES", df_filtered[country_col].nunique() if country_col in df_filtered.columns else "0")
+        st.metric("COUNTRIES", df_filtered[country_col].nunique())
     with m3:
-        f_sum = int(pd.to_numeric(df_filtered[fatal_col], errors='coerce').sum()) if fatal_col in df_filtered.columns else 0
-        st.metric("FATALITIES", f_sum)
+        f_val = pd.to_numeric(df_filtered[fatal_col], errors='coerce').sum()
+        st.metric("FATALITIES", int(f_val))
 
     # --- 5. Map ---
     df_filtered[lat_col] = pd.to_numeric(df_filtered[lat_col], errors='coerce')
@@ -155,7 +115,6 @@ if not df_raw.empty:
 
     # --- 6. Extended Analytics ---
     t1, t2 = st.tabs(["STATISTICS", "DATA & EXPORT"])
-    
     with t1:
         c1, c2 = st.columns(2)
         with c1:
@@ -173,7 +132,7 @@ if not df_raw.empty:
         c3, c4 = st.columns(2)
         with c3:
             st.subheader("Attack Types")
-            fig_p = px.pie(df_filtered, names=type_col, template="plotly_dark", hole=0.4, color_discrete_sequence=px.colors.sequential.GnBu)
+            fig_p = px.pie(df_filtered, names=type_col, template="plotly_dark", hole=0.4)
             st.plotly_chart(fig_p, use_container_width=True)
         with c4:
             st.subheader("Fatalities by Country (Top 10)")
@@ -187,4 +146,4 @@ if not df_raw.empty:
         st.download_button("Download Data (CSV)", csv, "gdtd_export.csv", "text/csv")
 
 else:
-    st.info("Waiting for data...")
+    st.info("Loading or empty dataset...")
