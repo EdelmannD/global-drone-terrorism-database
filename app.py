@@ -184,7 +184,7 @@ if not df_raw.empty:
 
     st.markdown("<hr style='margin:10px 0px'>", unsafe_allow_html=True)
 
-    # --- 5. Main Map ---
+   # --- 5. Main Map ---
     if not df_filtered.empty:
         df_filtered[lat_col] = pd.to_numeric(df_filtered[lat_col], errors='coerce')
         df_filtered[lon_col] = pd.to_numeric(df_filtered[lon_col], errors='coerce')
@@ -193,25 +193,36 @@ if not df_raw.empty:
         df_filtered['lethality'] = df_filtered[fatal_col].apply(lambda x: "Fatal Attack" if x > 0 else "Non-Fatal")
         df_map = df_filtered.dropna(subset=[lat_col, lon_col])
         
+        # Kiszámoljuk a buborék méretét egy külön változóba, hogy ne zavarja a Plotly-t
+        bubble_size = df_map[fatal_col] + 3
+
         fig_map = px.scatter_mapbox(
-            df_map, lat=lat_col, lon=lon_col, 
-            size=df_map[fatal_col] + 3,
+            df_map, 
+            lat=lat_col, 
+            lon=lon_col, 
+            size=bubble_size,
             color='lethality',
             color_discrete_map={'Fatal Attack': '#FF8C00', 'Non-Fatal': '#00FF41'},
-            zoom=1.5, height=550, mapbox_style="carto-darkmatter",
+            zoom=1.5, 
+            height=550, 
+            mapbox_style="carto-darkmatter",
             category_orders={"lethality": ["Fatal Attack", "Non-Fatal"]},
-            # ITT TÖRTÉNT A MÓDOSÍTÁS:
-            hover_name=city_col, # A buborék címe a Város lesz
+            hover_name=city_col, 
             hover_data={
                 lat_col: False, 
                 lon_col: False, 
                 'lethality': True, 
                 fatal_col: True, 
                 group_col: True,
-                date_col: True, # Dátum megjelenítése
-                'size': False   # A "size" címke elrejtése
+                # A date_col-t csak akkor adjuk hozzá, ha létezik (a te esetedben a 'year' biztosan az)
+                year_col: True 
             }
         )
+        
+        # Ezzel a sorral tüntetjük el a felesleges "size" feliratot a buborékról, 
+        # ha mégis megjelenne a Plotly alapbeállítása miatt
+        fig_map.update_traces(hovertemplate=None) 
+
         fig_map.update_layout(
             margin={"r":0,"t":0,"l":0,"b":0}, 
             paper_bgcolor='rgba(0,0,0,0)',
