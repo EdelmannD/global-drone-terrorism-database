@@ -40,7 +40,7 @@ st.markdown("""
 
     /* FŐCÍM: Még nagyobb méret */
     .main-title {
-        font-size: 5rem; /* Megnövelve 2.5-ről 5-ra */
+        font-size: 10rem; /* Megnövelve 2.5-ről 5-ra */
         font-weight: bold;
         line-height: 1.0;
         color: #FFFFFF;
