@@ -7,25 +7,41 @@ st.set_page_config(page_title="GDTD Dashboard", layout="wide", initial_sidebar_s
 
 st.markdown("""
     <style>
-    .stApp { background-color: #121417; color: #E0E0E0; }
+    /* Alap háttér és világosabb szövegek */
+    .stApp { background-color: #121417; color: #F0F2F6; }
     [data-testid="stSidebar"] { background-color: #1a1d21; border-right: 1px solid #333; }
     
-    /* Cím stílus - Kisebb és elegáns */
+    /* Világos szürke feliratok a jobb olvashatóságért */
+    p, span, label, .stMetric label { color: #D1D5DB !important; } 
+
+    /* Cím stílus - Kompakt és fehér */
     .main-title {
-        font-size: 1.8rem !important;
+        font-size: 1.6rem !important;
         font-weight: 800;
-        color: #FFFFFF;
-        line-height: 1.1;
+        color: #FFFFFF !important;
+        line-height: 1.0;
+        margin-top: -10px; /* Feljebb tolás */
         margin-bottom: 0;
     }
 
-    /* Metric kártyák finomítása */
+    /* Metric kártyák - Kompaktabb méret és feljebb tolás */
     [data-testid="stMetric"] {
         background-color: #1e2124;
-        padding: 5px 15px;
+        padding: 2px 12px;
         border-radius: 4px;
         border-left: 3px solid #FFFFFF;
+        margin-top: -10px;
     }
+    
+    /* Metrika értékek (számok) színe */
+    [data-testid="stMetricValue"] {
+        color: #FFFFFF !important;
+        font-size: 1.8rem !important;
+    }
+
+    /* Térközök csökkentése a fejléc és a térkép között */
+    .block-container { padding-top: 1rem !important; padding-bottom: 0rem !important; }
+    hr { margin-top: 0.5rem !important; margin-bottom: 0.5rem !important; }
 
     /* Chart konténer a statisztikákhoz */
     .chart-container {
@@ -78,7 +94,7 @@ if not df_raw.empty:
             df_filtered = df_filtered[(df_filtered[year_col] >= yr_range[0]) & (df_filtered[year_col] <= yr_range[1])]
 
     # --- 4. Header: Title + 3 Metrics egy sorban ---
-    header_col1, header_col2, header_col3, header_col4 = st.columns([2, 1, 1, 1])
+    header_col1, header_col2, header_col3, header_col4 = st.columns([2.5, 1, 1, 1])
     
     with header_col1:
         st.markdown('<p class="main-title">GLOBAL DRONE<br>TERRORISM DATABASE</p>', unsafe_allow_html=True)
@@ -95,7 +111,7 @@ if not df_raw.empty:
 
     st.markdown("---")
 
-    # --- 5. Main Map (Teljes szélesség) ---
+    # --- 5. Main Map (Feltolva a fejléc alá) ---
     df_filtered[lat_col] = pd.to_numeric(df_filtered[lat_col], errors='coerce')
     df_filtered[lon_col] = pd.to_numeric(df_filtered[lon_col], errors='coerce')
     df_map = df_filtered.dropna(subset=[lat_col, lon_col])
@@ -105,7 +121,7 @@ if not df_raw.empty:
         size=pd.to_numeric(df_map[fatal_col], errors='coerce').fillna(0) + 3,
         color=source_col,
         color_discrete_map={'GTD': '#FF8C00', 'ACLED': '#00FF41'},
-        zoom=1.5, height=500, mapbox_style="carto-darkmatter"
+        zoom=1.5, height=520, mapbox_style="carto-darkmatter"
     )
     fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, paper_bgcolor='rgba(0,0,0,0)')
     st.plotly_chart(fig_map, use_container_width=True)
