@@ -3,30 +3,38 @@ import pandas as pd
 import plotly.express as px
 import io
 
-# --- 1. Konfiguráció és Letisztult Design ---
+# --- 1. Page Config & Professional Dark Theme ---
 st.set_page_config(page_title="GDTD Dashboard", layout="wide")
 
-# CSS a sötét témához és a fehér betűkhöz a sidebarban
 st.markdown("""
     <style>
-    .stApp { background-color: #121417; color: #FFFFFF; }
+    /* Background and main text */
+    .stApp { background-color: #121417; color: #E0E0E0; }
+    
+    /* Sidebar styling */
     [data-testid="stSidebar"] { background-color: #1a1d21; border-right: 1px solid #333; }
-    /* Sidebar feliratok fehérítése */
-    [data-testid="stSidebar"] .stMarkdown p, [data-testid="stSidebar"] label { color: #FFFFFF !important; }
-    /* KPI kártyák stílusa ikonok nélkül */
+    [data-testid="stSidebar"] .stMarkdown p, [data-testid="stSidebar"] label { color: #E0E0E0 !important; }
+    
+    /* Metric Cards - Minimalist */
     [data-testid="stMetric"] {
         background-color: #1e2124;
-        padding: 15px;
-        border-radius: 5px;
-        border-left: 5px solid #FF8C00;
+        padding: 10px 15px;
+        border-radius: 4px;
+        border-left: 4px solid #808080; /* Gray instead of orange/red */
     }
-    [data-testid="stMetricLabel"] { color: #FFFFFF !important; font-weight: normal; }
-    /* Menüsor elrejtése a tetején (opcionális, de tisztább) */
-    header {visibility: hidden;}
+    [data-testid="stMetricLabel"] { color: #AAAAAA !important; font-size: 0.9rem !important; }
+    [data-testid="stMetricValue"] { color: #FFFFFF !important; font-size: 1.5rem !important; }
+    
+    /* Remove unnecessary spacing at the top */
+    .block-container { padding-top: 1rem; padding-bottom: 0rem; }
+    header { visibility: hidden; }
+    
+    /* Gray alert for errors/warnings */
+    .stAlert { background-color: #2b2e32; color: #E0E0E0; border: 1px solid #444; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. Adatbetöltés ---
+# --- 2. Data Loading ---
 @st.cache_data
 def load_data():
     filename = "Acled_GTD_Drone_Database_20260429.csv"
@@ -38,13 +46,13 @@ def load_data():
         df.columns = df.columns.str.strip().str.lower()
         return df
     except Exception as e:
-        st.error(f"Hiba az adatok beolvasásakor: {e}")
+        st.sidebar.error(f"Data loading error: {e}")
         return pd.DataFrame()
 
 df_raw = load_data()
 
 if not df_raw.empty:
-    # Oszlopok beállítása
+    # Column mapping
     year_col = 'year' if 'year' in df_raw.columns else 'iyear'
     lat_col = 'latitude'
     lon_col = 'longitude'
@@ -53,43 +61,46 @@ if not df_raw.empty:
     group_col = 'gname'
     source_col = 'adatforras'
 
-    # --- 3. Bal oldali menüsáv (Fehér betűkkel) ---
-    st.sidebar.title("SZŰRŐK")
+    # --- 3. Sidebar (Filters) ---
+    st.sidebar.title("FILTERS")
     
-    # Adatforrás szűrő (ÚJ: Itt választható a GTD vs ACLED)
+    # Data Source Filter
     if source_col in df_raw.columns:
         sources = sorted(df_raw[source_col].unique())
-        selected_sources = st.sidebar.multiselect("ADATFORRÁS", sources, default=sources)
+        selected_sources = st.sidebar.multiselect("DATA SOURCE", sources, default=sources)
         df_filtered = df_raw[df_raw[source_col].isin(selected_sources)]
     else:
         df_filtered = df_raw
 
-    # Időszak szűrő
+    # Year Range Filter
     if year_col in df_filtered.columns:
         years = sorted(df_filtered[year_col].dropna().unique().astype(int))
-        yr_range = st.sidebar.select_slider("IDŐSZAK", options=years, value=(min(years), max(years)))
+        yr_range = st.sidebar.select_slider("TIME PERIOD", options=years, value=(min(years), max(years)))
         df_filtered = df_filtered[(df_filtered[year_col] >= yr_range[0]) & (df_filtered[year_col] <= yr_range[1])]
 
-    # Ország szűrő
+    # Country Filter
     if country_col in df_filtered.columns:
         countries = sorted(df_filtered[country_col].dropna().unique())
-        sel_countries = st.sidebar.multiselect("ORSZÁG", countries)
+        sel_countries = st.sidebar.multiselect("COUNTRY", countries)
         if sel_countries:
             df_filtered = df_filtered[df_filtered[country_col].isin(sel_countries)]
 
-    # --- 4. Főoldal megjelenítése ---
-    st.title("Global Drone Terrorism Database")
+    # --- 4. Main Display (Compressed Layout) ---
+    # Title and Metrics in one row to save space
+    head_col, m1, m2, m3 = st.columns([2, 1, 1, 1])
     
-    # KPI adatok (ikonok nélkül)
-    m1, m2, m3 = st.columns(3)
-    m1.metric("ÖSSZES INCIDENS", len(df_filtered))
-    m2.metric("ORSZÁGOK", df_filtered[country_col].nunique() if country_col in df_filtered.columns else "N/A")
-    f_sum = int(pd.to_numeric(df_filtered[fatal_col], errors='coerce').sum()) if fatal_col in df_filtered.columns else 0
-    m3.metric("ÁLDOZATOK", f"{f_sum} fő")
+    with head_col:
+        st.subheader("Global Drone Terrorism Database")
+    
+    with m1:
+        st.metric("INCIDENTS", len(df_filtered))
+    with m2:
+        st.metric("COUNTRIES", df_filtered[country_col].nunique() if country_col in df_filtered.columns else "N/A")
+    with m3:
+        f_sum = int(pd.to_numeric(df_filtered[fatal_col], errors='coerce').sum()) if fatal_col in df_filtered.columns else 0
+        st.metric("FATALITIES", f"{f_sum}")
 
-    st.markdown("---")
-
-    # TÉRKÉP
+    # --- 5. Map (Higher Position) ---
     if lat_col in df_filtered.columns and lon_col in df_filtered.columns:
         df_filtered[lat_col] = pd.to_numeric(df_filtered[lat_col], errors='coerce')
         df_filtered[lon_col] = pd.to_numeric(df_filtered[lon_col], errors='coerce')
@@ -101,24 +112,29 @@ if not df_raw.empty:
             color=source_col,
             color_discrete_map={'GTD': '#FF8C00', 'ACLED': '#00FF41'},
             hover_name=country_col,
-            zoom=1.5, height=650, mapbox_style="carto-darkmatter"
+            zoom=1.4, height=600, mapbox_style="carto-darkmatter"
         )
-        fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, paper_bgcolor='rgba(0,0,0,0)')
+        fig_map.update_layout(
+            margin={"r":0,"t":0,"l":0,"b":0}, 
+            paper_bgcolor='rgba(0,0,0,0)',
+            legend=dict(font=dict(color="#E0E0E0"), bgcolor="rgba(0,0,0,0.5)")
+        )
         st.plotly_chart(fig_map, use_container_width=True)
 
-    # ANALITIKA ÉS EXPORT (Itt kaptak helyet a gombok a sáv helyett)
-    t1, t2 = st.tabs(["STATISZTIKA", "ADATOK ÉS EXPORT"])
+    # --- 6. Analytics & Export Tabs ---
+    t1, t2 = st.tabs(["STATISTICS", "DATA & EXPORT"])
     
     with t1:
         if year_col in df_filtered.columns:
-            trend = df_filtered.groupby(year_col).size().reset_index(name='esemény')
-            st.plotly_chart(px.line(trend, x=year_col, y='esemény', template="plotly_dark"), use_container_width=True)
+            trend = df_filtered.groupby(year_col).size().reset_index(name='incidents')
+            fig_trend = px.line(trend, x=year_col, y='incidents', template="plotly_dark")
+            fig_trend.update_traces(line_color='#00FF41')
+            st.plotly_chart(fig_trend, use_container_width=True)
 
     with t2:
         st.dataframe(df_filtered, use_container_width=True)
-        # Itt vannak a gombok lejjebb hozva
         csv = df_filtered.to_csv(index=False).encode('utf-8')
-        st.download_button("Adatok letöltése (CSV)", csv, "gdtd_export.csv", "text/csv")
+        st.download_button("Download Data (CSV)", csv, "gdtd_export.csv", "text/csv")
 
 else:
-    st.error("Adatforrás nem található.")
+    st.info("Waiting for data source...")
