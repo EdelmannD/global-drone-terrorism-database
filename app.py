@@ -34,25 +34,21 @@ st.markdown("""
     }
 
     /* --- SLIDER (CSÚSZKA) ÉS NEON ZÖLD DESIGN --- */
-    /* A csúszka aktív vonala (ami eddig piros volt) */
     div[data-baseweb="slider"] > div > div > div {
         background-color: #00FF41 !important; 
     }
     
-    /* A csúszka gombja (fogantyú) */
     div[role="slider"] {
         background-color: #00FF41 !important;
         border: 2px solid #FFFFFF !important;
     }
 
-    /* A csúszka mozgatásakor megjelenő lebegő évszám buborék */
     div[data-baseweb="tooltip"] {
         background-color: #262730 !important;
         color: white !important;
         border: 1px solid #4B4B4B !important;
     }
     
-    /* Multiselect kiválasztott elemek (tag-ek) színe */
     span[data-baseweb="tag"] {
         background-color: #444 !important;
         color: white !important;
@@ -140,14 +136,24 @@ if not df_raw.empty:
         """, unsafe_allow_html=True)
 
         st.markdown("### Filters")
+        
+        # Data Source Filter
         sources = sorted(df_raw[source_col].unique()) if source_col in df_raw.columns else []
         selected_sources = st.multiselect("Data Source", sources, default=sources)
         df_filtered = df_raw[df_raw[source_col].isin(selected_sources)].copy()
 
+        # Attack Type Filter (Új rész)
+        if type_col in df_filtered.columns:
+            types = sorted(df_filtered[type_col].dropna().unique())
+            selected_types = st.multiselect("Attack Type", types, default=types)
+            df_filtered = df_filtered[df_filtered[type_col].isin(selected_types)]
+
+        # Year Slider
         if year_col in df_filtered.columns:
             years = sorted(df_filtered[year_col].dropna().unique().astype(int))
-            yr_range = st.select_slider("Period", options=years, value=(min(years), max(years)))
-            df_filtered = df_filtered[(df_filtered[year_col] >= yr_range[0]) & (df_filtered[year_col] <= yr_range[1])]
+            if years:
+                yr_range = st.select_slider("Period", options=years, value=(min(years), max(years)))
+                df_filtered = df_filtered[(df_filtered[year_col] >= yr_range[0]) & (df_filtered[year_col] <= yr_range[1])]
 
     # --- 4. Header ---
     header_col1, header_col2, header_col3, header_col4, spacer = st.columns([2.5, 1, 1, 1, 0.4])
@@ -194,7 +200,7 @@ if not df_raw.empty:
     )
     st.plotly_chart(fig_map, use_container_width=True)
 
-    # --- 6. Statistics Grid (2x2) ---
+    # --- 6. Statistics Grid ---
     st.markdown("### STATISTICS")
 
     def apply_bw_style(fig):
