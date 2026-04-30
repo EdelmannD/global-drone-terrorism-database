@@ -148,7 +148,7 @@ if not df_raw.empty:
         df_map, lat=lat_col, lon=lon_col, 
         size=df_map[fatal_col] + 3,
         color='lethality',
-        color_discrete_map={'Fatal Attack': '#FF4B4B', 'Non-Fatal': '#00FF41'},
+        color_discrete_map={'Fatal Attack': '#FF8C00', 'Non-Fatal': '#00FF41'},
         zoom=1.5, height=520, mapbox_style="carto-darkmatter",
         category_orders={"lethality": ["Fatal Attack", "Non-Fatal"]}
     )
