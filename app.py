@@ -112,7 +112,7 @@ if not df_raw.empty:
 
     # --- 4. Main Header (Felirat és Metrikák egymás mellett) ---
     # Az arányt 5:1:1:1-re állítottam, hogy a hatalmas betűk ne tolják el a többi mezőt
-    header_col1, header_col2, header_col3, header_col4 = st.columns([3, 1, 1, 1])
+    header_col1, header_col2, header_col3, header_col4 = st.columns([2.8, 1, 1, 1])
 
     with header_col1:
         # Itt a kért 10rem méret, inline HTML-el kényszerítve
