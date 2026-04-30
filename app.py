@@ -7,17 +7,14 @@ st.set_page_config(page_title="GDTD Dashboard", layout="wide", initial_sidebar_s
 
 st.markdown("""
     <style>
-    /* Alap háttér és általános világos szövegek */
     .stApp { background-color: #121417; color: #F0F2F6; }
     [data-testid="stSidebar"] { background-color: #1a1d21; border-right: 1px solid #333; }
     
-    /* Feliratok világosítása */
     p, span, label, div, h1, h2, h3, .stMetric label, [data-testid="stMarkdownContainer"] p, 
     .stMultiSelect label, .stSlider label { 
         color: #F0F2F6 !important; 
     } 
 
-    /* Sidebar Citation stílus */
     .sidebar-cite {
         font-size: 0.85rem !important;
         background-color: #262730;
@@ -28,7 +25,6 @@ st.markdown("""
     }
     .sidebar-cite a { color: #00FF41 !important; text-decoration: none; }
 
-    /* Cím stílus */
     .main-title {
         font-size: 1.6rem !important;
         font-weight: 800;
@@ -38,7 +34,6 @@ st.markdown("""
         margin-bottom: 0;
     }
 
-    /* Metric kártyák */
     [data-testid="stMetric"] {
         background-color: #1e2124;
         padding: 5px 12px;
@@ -55,7 +50,6 @@ st.markdown("""
     .block-container { padding-top: 1rem !important; padding-bottom: 2rem !important; }
     hr { margin-top: 0.5rem !important; margin-bottom: 0.5rem !important; }
 
-    /* Chart konténer - Fekete kerettel */
     .chart-container {
         background-color: #FFFFFF;
         padding: 10px;
@@ -64,7 +58,6 @@ st.markdown("""
         margin-bottom: 20px;
     }
 
-    /* Diszkrét lábjegyzet stílus */
     .footer-note {
         font-size: 0.75rem;
         color: #888888 !important;
@@ -116,7 +109,7 @@ if not df_raw.empty:
         st.markdown("### Filters")
         sources = sorted(df_raw[source_col].unique()) if source_col in df_raw.columns else []
         selected_sources = st.multiselect("Data Source", sources, default=sources)
-        df_filtered = df_raw[df_raw[source_col].isin(selected_sources)]
+        df_filtered = df_raw[df_raw[source_col].isin(selected_sources)].copy()
 
         if year_col in df_filtered.columns:
             years = sorted(df_filtered[year_col].dropna().unique().astype(int))
@@ -141,19 +134,33 @@ if not df_raw.empty:
 
     st.markdown("---")
 
-    # --- 5. Main Map ---
+    # --- 5. Main Map (Categorized by Lethality) ---
     df_filtered[lat_col] = pd.to_numeric(df_filtered[lat_col], errors='coerce')
     df_filtered[lon_col] = pd.to_numeric(df_filtered[lon_col], errors='coerce')
+    df_filtered[fatal_col] = pd.to_numeric(df_filtered[fatal_col], errors='coerce').fillna(0)
+    
+    # Új oszlop a kimenetel típusához
+    df_filtered['lethality'] = df_filtered[fatal_col].apply(lambda x: "Fatal Attack" if x > 0 else "Non-Fatal")
+    
     df_map = df_filtered.dropna(subset=[lat_col, lon_col])
     
     fig_map = px.scatter_mapbox(
         df_map, lat=lat_col, lon=lon_col, 
-        size=pd.to_numeric(df_map[fatal_col], errors='coerce').fillna(0) + 3,
-        color=source_col,
-        color_discrete_map={'GTD': '#FF8C00', 'ACLED': '#00FF41'},
-        zoom=1.5, height=520, mapbox_style="carto-darkmatter"
+        size=df_map[fatal_col] + 3,
+        color='lethality',
+        color_discrete_map={'Fatal Attack': '#FF4B4B', 'Non-Fatal': '#00FF41'},
+        zoom=1.5, height=520, mapbox_style="carto-darkmatter",
+        category_orders={"lethality": ["Fatal Attack", "Non-Fatal"]}
     )
-    fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, paper_bgcolor='rgba(0,0,0,0)')
+    fig_map.update_layout(
+        margin={"r":0,"t":0,"l":0,"b":0}, 
+        paper_bgcolor='rgba(0,0,0,0)',
+        legend=dict(
+            title_text="",
+            yanchor="top", y=0.99, xanchor="left", x=0.01,
+            bgcolor="rgba(0,0,0,0.5)", font=dict(color="white")
+        )
+    )
     st.plotly_chart(fig_map, use_container_width=True)
 
     # --- 6. Statistics Grid (2x2) ---
@@ -165,22 +172,8 @@ if not df_raw.empty:
             paper_bgcolor='white', 
             font=dict(family="Arial", size=12, color="black"),
             margin=dict(l=50, r=20, t=50, b=50),
-            xaxis=dict(
-                showgrid=False, 
-                linecolor='black', 
-                ticks='inside', 
-                tickcolor='black',
-                tickfont=dict(color='black'),
-                title_font=dict(color='black')
-            ),
-            yaxis=dict(
-                showgrid=False, 
-                linecolor='black', 
-                ticks='inside', 
-                tickcolor='black',
-                tickfont=dict(color='black'),
-                title_font=dict(color='black')
-            ),
+            xaxis=dict(showgrid=False, linecolor='black', ticks='inside', tickcolor='black', tickfont=dict(color='black')),
+            yaxis=dict(showgrid=False, linecolor='black', ticks='inside', tickcolor='black', tickfont=dict(color='black')),
             showlegend=False
         )
         return fig
@@ -219,11 +212,7 @@ if not df_raw.empty:
         src = df_filtered[source_col].value_counts().reset_index()
         fig4 = px.pie(src, names=source_col, values='count', title="Data Sources", hole=0.4)
         fig4.update_traces(marker=dict(colors=['black', '#cccccc'], line=dict(color='white', width=1)))
-        fig4.update_layout(
-            paper_bgcolor='white', 
-            font=dict(family="Arial", color='black'),
-            margin=dict(t=50, b=20, l=10, r=10)
-        )
+        fig4.update_layout(paper_bgcolor='white', font=dict(family="Arial", color='black'), margin=dict(t=50, b=20, l=10, r=10))
         st.plotly_chart(fig4, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -231,8 +220,8 @@ if not df_raw.empty:
     st.markdown("""
         <div class="footer-note">
             Data sources:<br>
-ACLED: C. Raleigh, A. Linke, H. Hegre, J. Karlsen, Introducing ACLED: An armed conflict location and event dataset, J. Peace Res. 47, 2010.<br>
-GTD: START - National Consortium for the Study of Terrorism and Responses to Terrorism, Global Terrorism Database, 1970 - 2022, 2025 database, 2025.<br>
+            ACLED: C. Raleigh, A. Linke, H. Hegre, J. Karlsen, Introducing ACLED: An armed conflict location and event dataset, J. Peace Res. 47, 2010.<br>
+            GTD: START - National Consortium for the Study of Terrorism and Responses to Terrorism, Global Terrorism Database, 1970 - 2022, 2025 database, 2025.<br>
         </div>
     """, unsafe_allow_html=True)
 
