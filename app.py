@@ -10,6 +10,10 @@ st.markdown("""
     .stApp { background-color: #121417; color: #F0F2F6; }
     [data-testid="stSidebar"] { background-color: #1a1d21; border-right: 1px solid #333; }
     
+    /* Elrendezés javítása - Feljebb tolás */
+    .block-container { padding-top: 0.5rem !important; padding-bottom: 0rem !important; }
+    [data-testid="stVerticalBlock"] > div:first-child { margin-top: -1.5rem !important; }
+
     p, span, label, div, h1, h2, h3, .stMetric label, [data-testid="stMarkdownContainer"] p, 
     .stMultiSelect label, .stSlider label { 
         color: #F0F2F6 !important; 
@@ -20,12 +24,6 @@ st.markdown("""
     div[data-baseweb="popover"] { background-color: #ffffff !important; border-radius: 4px; }
     div[role="listbox"] li { background-color: #ffffff !important; color: #000000 !important; }
     div[role="listbox"] li:hover { background-color: #eeeeee !important; }
-
-    /* GÖRDÍTŐSÁV */
-    ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-track { background: #1a1d21; }
-    ::-webkit-scrollbar-thumb { background: #4B4B4B; border-radius: 10px; }
-    ::-webkit-scrollbar-thumb:hover { background: #00FF41; }
 
     .sidebar-cite {
         font-size: 0.85rem !important;
@@ -52,7 +50,7 @@ st.markdown("""
         font-weight: 800;
         color: #FFFFFF !important;
         line-height: 1.0;
-        margin-top: -10px;
+        margin-top: 0px;
         margin-bottom: 0;
     }
 
@@ -61,7 +59,6 @@ st.markdown("""
         padding: 5px 12px;
         border-radius: 4px;
         border-left: 3px solid #FFFFFF;
-        margin-top: -10px;
     }
     
     [data-testid="stMetricValue"] { color: #FFFFFF !important; font-size: 1.8rem !important; }
@@ -77,7 +74,7 @@ st.markdown("""
     .footer-note {
         font-size: 0.75rem;
         color: #888888 !important;
-        margin-top: 40px;
+        margin-top: 20px;
         border-top: 1px solid #333;
         padding-top: 10px;
     }
@@ -97,6 +94,22 @@ def load_data():
         df.columns = df.columns.str.strip().str.lower()
         if 'adatforras' in df.columns:
             df.rename(columns={'adatforras': 'data_source'}, inplace=True)
+        
+        # Actor Type kategorizálás (3. pont)
+        def categorize_actor(name):
+            name = str(name).strip()
+            if name.lower() == 'unknown':
+                return 'Unknown'
+            elif name.lower().startswith('unidentified'):
+                return 'Unidentified'
+            else:
+                return 'Terrorist Organization'
+        
+        if 'gname' in df.columns:
+            df['actor_category'] = df['gname'].apply(categorize_actor)
+        else:
+            df['actor_category'] = 'Unknown'
+            
         return df
     except:
         return pd.DataFrame()
@@ -122,30 +135,36 @@ if not df_raw.empty:
 
         st.markdown("### Filters")
         
-        # 1. Data Source Filter
-        sources = sorted(df_raw[source_col].unique()) if source_col in df_raw.columns else []
-        selected_sources = st.multiselect("Data Source", sources, default=sources)
-        df_filtered = df_raw[df_raw[source_col].isin(selected_sources)].copy()
+        # Period (Year) Slider - Előre hozva a Filters alá (2. pont)
+        if year_col in df_raw.columns:
+            years = sorted(df_raw[year_col].dropna().unique().astype(int))
+            if years:
+                yr_range = st.select_slider("Period", options=years, value=(min(years), max(years)))
+                df_filtered = df_raw[(df_raw[year_col] >= yr_range[0]) & (df_raw[year_col] <= yr_range[1])].copy()
+        else:
+            df_filtered = df_raw.copy()
 
-        # 2. Country Filter
+        # Data Source Filter
+        sources = sorted(df_filtered[source_col].unique()) if source_col in df_filtered.columns else []
+        selected_sources = st.multiselect("Data Source", sources, default=sources)
+        df_filtered = df_filtered[df_filtered[source_col].isin(selected_sources)]
+
+        # Actor Category Filter (3. pont)
+        actor_cats = sorted(df_filtered['actor_category'].unique())
+        selected_actors = st.multiselect("Actor Type", actor_cats, default=actor_cats)
+        df_filtered = df_filtered[df_filtered['actor_category'].isin(selected_actors)]
+
+        # Country Filter
         countries = sorted(df_filtered[country_col].dropna().unique()) if country_col in df_filtered.columns else []
         selected_countries = st.multiselect("Country", countries, default=countries)
         df_filtered = df_filtered[df_filtered[country_col].isin(selected_countries)]
 
-        # 3. Attack Type Filter (ACLED N/A kezeléssel)
+        # Attack Type Filter
         if type_col in df_filtered.columns:
-            # Kitöltjük az üres mezőket "N/A"-val, hogy választható legyen
             df_filtered[type_col] = df_filtered[type_col].fillna("N/A")
             types = sorted(df_filtered[type_col].unique())
             selected_types = st.multiselect("Attack Type", types, default=types)
             df_filtered = df_filtered[df_filtered[type_col].isin(selected_types)]
-
-        # 4. Year Slider
-        if year_col in df_filtered.columns:
-            years = sorted(df_filtered[year_col].dropna().unique().astype(int))
-            if years:
-                yr_range = st.select_slider("Period", options=years, value=(min(years), max(years)))
-                df_filtered = df_filtered[(df_filtered[year_col] >= yr_range[0]) & (df_filtered[year_col] <= yr_range[1])]
 
     # --- 4. Header ---
     header_col1, header_col2, header_col3, header_col4, spacer = st.columns([2.5, 1, 1, 1, 0.4])
@@ -159,7 +178,7 @@ if not df_raw.empty:
         f_val = pd.to_numeric(df_filtered[fatal_col], errors='coerce').sum()
         st.metric("FATALITIES", int(f_val if pd.notnull(f_val) else 0))
 
-    st.markdown("---")
+    st.markdown("<hr style='margin:10px 0px'>", unsafe_allow_html=True)
 
     # --- 5. Main Map ---
     if not df_filtered.empty:
@@ -175,9 +194,9 @@ if not df_raw.empty:
             size=df_map[fatal_col] + 3,
             color='lethality',
             color_discrete_map={'Fatal Attack': '#FF8C00', 'Non-Fatal': '#00FF41'},
-            zoom=1.5, height=520, mapbox_style="carto-darkmatter",
+            zoom=1.5, height=550, mapbox_style="carto-darkmatter",
             category_orders={"lethality": ["Fatal Attack", "Non-Fatal"]},
-            hover_data={lat_col:False, lon_col:False, 'lethality':True, fatal_col:True}
+            hover_data={lat_col:False, lon_col:False, 'lethality':True, fatal_col:True, group_col:True}
         )
         fig_map.update_layout(
             margin={"r":0,"t":0,"l":0,"b":0}, 
@@ -196,8 +215,8 @@ if not df_raw.empty:
         def apply_bw_style(fig):
             fig.update_layout(
                 plot_bgcolor='white', paper_bgcolor='white', 
-                font=dict(family="Arial", size=12, color="black"),
-                margin=dict(l=50, r=20, t=50, b=50),
+                font=dict(family="Arial", size=11, color="black"),
+                margin=dict(l=40, r=10, t=40, b=40),
                 xaxis=dict(showgrid=False, linecolor='black', ticks='inside'),
                 yaxis=dict(showgrid=False, linecolor='black', ticks='inside'),
                 showlegend=False
@@ -238,17 +257,15 @@ if not df_raw.empty:
             src = df_filtered[source_col].value_counts().reset_index()
             fig4 = px.pie(src, names=source_col, values='count', title="Data Sources", hole=0.4)
             fig4.update_traces(marker=dict(colors=['black', '#cccccc'], line=dict(color='white', width=1)))
-            fig4.update_layout(paper_bgcolor='white', font=dict(family="Arial", color='black'))
+            fig4.update_layout(paper_bgcolor='white', font=dict(family="Arial", color='black'), margin=dict(t=40, b=10))
             st.plotly_chart(fig4, use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
     else:
         st.warning("No data available for the selected filters.")
 
-    # --- 7. Footer ---
     st.markdown("""
         <div class="footer-note">
-            Data sources:<br>
-            ACLED: C. Raleigh et al. (2010) | GTD: START Consortium (2025)<br>
+            Data sources: ACLED (C. Raleigh et al. 2010) | GTD (START Consortium 2025)
         </div>
     """, unsafe_allow_html=True)
 else:
