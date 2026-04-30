@@ -11,38 +11,38 @@ st.markdown("""
     .stApp { background-color: #121417; color: #F0F2F6; }
     [data-testid="stSidebar"] { background-color: #1a1d21; border-right: 1px solid #333; }
     
-    /* Világos szürke feliratok a jobb olvashatóságért */
+    /* Világos szürke feliratok */
     p, span, label, .stMetric label { color: #D1D5DB !important; } 
 
-    /* Cím stílus - Kompakt és fehér */
+    /* Cím stílus - Kompakt */
     .main-title {
-        font-size: 1.6rem !important;
+        font-size: 1.5rem !important;
         font-weight: 800;
         color: #FFFFFF !important;
         line-height: 1.0;
-        margin-top: -10px; /* Feljebb tolás */
-        margin-bottom: 0;
+        margin: 0;
     }
 
-    /* Metric kártyák - Kompaktabb méret és feljebb tolás */
+    /* Metric kártyák igazítása */
     [data-testid="stMetric"] {
         background-color: #1e2124;
-        padding: 2px 12px;
+        padding: 5px 12px;
         border-radius: 4px;
         border-left: 3px solid #FFFFFF;
-        margin-top: -10px;
     }
     
-    /* Metrika értékek (számok) színe */
     [data-testid="stMetricValue"] {
         color: #FFFFFF !important;
-        font-size: 1.8rem !important;
+        font-size: 1.6rem !important;
     }
 
-    /* Térközök csökkentése a fejléc és a térkép között */
-    .block-container { padding-top: 1rem !important; padding-bottom: 0rem !important; }
-    hr { margin-top: 0.5rem !important; margin-bottom: 0.5rem !important; }
+    /* Konténer szűkítése a térkép szélességéhez */
+    .header-container {
+        padding: 0px 1% 10px 1%;
+    }
 
+    .block-container { padding-top: 1.5rem !important; }
+    
     /* Chart konténer a statisztikákhoz */
     .chart-container {
         background-color: #FFFFFF;
@@ -51,8 +51,6 @@ st.markdown("""
         border: 1px solid #000000;
         margin-bottom: 20px;
     }
-    
-    header[data-testid="stHeader"] { background-color: rgba(0,0,0,0) !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -75,7 +73,6 @@ def load_data():
 df_raw = load_data()
 
 if not df_raw.empty:
-    # Oszlop azonosítás
     lat_col, lon_col = 'latitude', 'longitude'
     year_col, country_col = 'year', 'country_txt'
     fatal_col, source_col = 'nkill', 'data_source'
@@ -93,38 +90,41 @@ if not df_raw.empty:
             yr_range = st.select_slider("Period", options=years, value=(min(years), max(years)))
             df_filtered = df_filtered[(df_filtered[year_col] >= yr_range[0]) & (df_filtered[year_col] <= yr_range[1])]
 
-    # --- 4. Header: Title + 3 Metrics egy sorban ---
-    header_col1, header_col2, header_col3, header_col4 = st.columns([1.8, 1, 1, 1])
+    # --- 4. Content Area (Header + Map) ---
+    # Egy konténerbe tesszük őket, hogy azonos szélességet vegyenek fel
+    content_container = st.container()
     
-    with header_col1:
-        st.markdown('<p class="main-title">GLOBAL DRONE<br>TERRORISM DATABASE</p>', unsafe_allow_html=True)
-    
-    with header_col2:
-        st.metric("INCIDENTS", len(df_filtered))
-    
-    with header_col3:
-        st.metric("COUNTRIES", df_filtered[country_col].nunique())
-    
-    with header_col4:
-        f_val = pd.to_numeric(df_filtered[fatal_col], errors='coerce').sum()
-        st.metric("FATALITIES", int(f_val if pd.notnull(f_val) else 0))
+    with content_container:
+        # Header sor: Az oszloparányokat finomhangoltam
+        h_col1, h_col2, h_col3, h_col4 = st.columns([2.2, 1, 1, 1])
+        
+        with h_col1:
+            st.markdown('<p class="main-title">GLOBAL DRONE<br>TERRORISM DATABASE</p>', unsafe_allow_html=True)
+        with h_col2:
+            st.metric("INCIDENTS", len(df_filtered))
+        with h_col3:
+            st.metric("COUNTRIES", df_filtered[country_col].nunique())
+        with h_col4:
+            f_val = pd.to_numeric(df_filtered[fatal_col], errors='coerce').sum()
+            st.metric("FATALITIES", int(f_val if pd.notnull(f_val) else 0))
 
-    st.markdown("---")
+        st.markdown('<div style="height: 10px;"></div>', unsafe_allow_html=True)
 
-    # --- 5. Main Map (Feltolva a fejléc alá) ---
-    df_filtered[lat_col] = pd.to_numeric(df_filtered[lat_col], errors='coerce')
-    df_filtered[lon_col] = pd.to_numeric(df_filtered[lon_col], errors='coerce')
-    df_map = df_filtered.dropna(subset=[lat_col, lon_col])
-    
-    fig_map = px.scatter_mapbox(
-        df_map, lat=lat_col, lon=lon_col, 
-        size=pd.to_numeric(df_map[fatal_col], errors='coerce').fillna(0) + 3,
-        color=source_col,
-        color_discrete_map={'GTD': '#FF8C00', 'ACLED': '#00FF41'},
-        zoom=1.5, height=520, mapbox_style="carto-darkmatter"
-    )
-    fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, paper_bgcolor='rgba(0,0,0,0)')
-    st.plotly_chart(fig_map, use_container_width=True)
+        # --- 5. Main Map ---
+        df_filtered[lat_col] = pd.to_numeric(df_filtered[lat_col], errors='coerce')
+        df_filtered[lon_col] = pd.to_numeric(df_filtered[lon_col], errors='coerce')
+        df_map = df_filtered.dropna(subset=[lat_col, lon_col])
+        
+        fig_map = px.scatter_mapbox(
+            df_map, lat=lat_col, lon=lon_col, 
+            size=pd.to_numeric(df_map[fatal_col], errors='coerce').fillna(0) + 3,
+            color=source_col,
+            color_discrete_map={'GTD': '#FF8C00', 'ACLED': '#00FF41'},
+            zoom=1.5, height=520, mapbox_style="carto-darkmatter"
+        )
+        # Margin 0 a térképnél, hogy kitöltse a rendelkezésre álló helyet
+        fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, paper_bgcolor='rgba(0,0,0,0)')
+        st.plotly_chart(fig_map, use_container_width=True)
 
     # --- 6. Statistics Grid (2x2) ---
     st.markdown("### STATISTICS")
@@ -177,4 +177,4 @@ if not df_raw.empty:
         st.plotly_chart(fig4, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 else:
-    st.error("Dataset error. Please check your CSV file.")
+    st.error("Dataset error.")
