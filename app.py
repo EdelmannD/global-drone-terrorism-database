@@ -16,10 +16,29 @@ st.markdown("""
         color: #F0F2F6 !important; 
     } 
 
-    /* Sidebar Citation és beviteli mezők egységes sötétszürke stílusa */
+    /* --- GÖRDÍTŐSÁV STÍLUS (SCROLLBAR) --- */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #1a1d21; }
+    ::-webkit-scrollbar-thumb { background: #4B4B4B; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #00FF41; }
+
+    /* --- SELECTOR / MULTISELECT FIXES --- */
+    /* A lenyíló lista (dropdown) szövegeinek javítása */
+    div[data-baseweb="popover"] ul {
+        background-color: #ffffff !important; /* Fehér háttér a listának */
+    }
+    div[data-baseweb="popover"] li {
+        color: #000000 !important; /* Fekete szöveg az elemeknek */
+    }
+    /* Kijelölt elem a listában */
+    div[data-baseweb="popover"] li:hover {
+        background-color: #f0f0f0 !important;
+    }
+
+    /* Sidebar Citation box */
     .sidebar-cite {
         font-size: 0.85rem !important;
-        background-color: #262730; /* Sötétszürke */
+        background-color: #262730;
         padding: 10px;
         border-radius: 5px;
         border: 1px solid #4B4B4B;
@@ -27,28 +46,29 @@ st.markdown("""
     }
     .sidebar-cite a { color: #D3D3D3 !important; text-decoration: underline; }
 
-    /* Multiselect háttérszínének egységesítése a cite boxszal */
+    /* Multiselect beviteli mező háttér */
     div[data-baseweb="select"] > div {
         background-color: #262730 !important;
         border-color: #4B4B4B !important;
     }
 
-    /* --- SLIDER (CSÚSZKA) ÉS NEON ZÖLD DESIGN --- */
+    /* --- SLIDER (CSÚSZKA) --- */
     div[data-baseweb="slider"] > div > div > div {
         background-color: #00FF41 !important; 
     }
-    
     div[role="slider"] {
         background-color: #00FF41 !important;
         border: 2px solid #FFFFFF !important;
     }
 
+    /* Tooltip fix */
     div[data-baseweb="tooltip"] {
         background-color: #262730 !important;
         color: white !important;
         border: 1px solid #4B4B4B !important;
     }
     
+    /* Multiselect címkék (amiket már kiválasztottál) */
     span[data-baseweb="tag"] {
         background-color: #444 !important;
         color: white !important;
@@ -142,7 +162,7 @@ if not df_raw.empty:
         selected_sources = st.multiselect("Data Source", sources, default=sources)
         df_filtered = df_raw[df_raw[source_col].isin(selected_sources)].copy()
 
-        # Attack Type Filter (Új rész)
+        # Attack Type Filter
         if type_col in df_filtered.columns:
             types = sorted(df_filtered[type_col].dropna().unique())
             selected_types = st.multiselect("Attack Type", types, default=types)
