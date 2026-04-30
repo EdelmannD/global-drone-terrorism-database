@@ -18,13 +18,18 @@ st.markdown("""
         color: #FFFFFF !important; 
     }
     
-    /* NEON BLUE Accent for Sidebar (replacing red) */
-    /* Slider track & handle */
+    /* Discrete Citation Style */
+    .small-citation {
+        font-size: 0.75rem;
+        color: #AAAAAA;
+        line-height: 1.2;
+        font-weight: normal;
+    }
+    
+    /* NEON BLUE Accent for Sidebar */
     div[data-baseweb="slider"] > div > div { background-color: #00E5FF !important; } 
-    div[data-baseweb="slider"] [role="slider"] { background-color: #00E5FF !important; border: 2px solid #00E5FF !important; box-shadow: 0 0 10px #00E5FF; }
-    /* Multiselect tags */
+    div[data-baseweb="slider"] [role="slider"] { background-color: #00E5FF !important; border: 2px solid #00E5FF !important; box-shadow: 0 0 8px #00E5FF; }
     span[data-baseweb="tag"] { background-color: #00E5FF !important; color: #000000 !important; font-weight: bold !important; }
-    /* Checkbox/Radio accents */
     div[data-baseweb="checkbox"] div[checked] { background-color: #00E5FF !important; }
 
     /* Header transparency */
@@ -35,12 +40,11 @@ st.markdown("""
         background-color: #1e2124;
         padding: 5px 12px;
         border-radius: 4px;
-        border-left: 3px solid #00E5FF; /* Neon Blue border */
+        border-left: 3px solid #00E5FF;
     }
     [data-testid="stMetricLabel"] { color: #AAAAAA !important; font-size: 0.8rem !important; }
     [data-testid="stMetricValue"] { color: #FFFFFF !important; font-size: 1.3rem !important; }
     
-    /* Layout optimization */
     .block-container { padding-top: 0.5rem; padding-bottom: 0rem; }
     </style>
     """, unsafe_allow_html=True)
@@ -73,17 +77,19 @@ if not df_raw.empty:
     source_col = 'adatforras'
     type_col = 'attacktype1_txt'
 
-    # --- 3. Sidebar (Citation & Filters) ---
+    # --- 3. Sidebar (Discrete Citation & Filters) ---
     with st.sidebar:
-        st.image("https://img.shields.io/badge/License-CC--BY--4.0-00E5FF", width=100)
-        st.markdown("""
-        ### CITATION
-        **Global Drone Terrorism Database (GDTD)**  
-        *Authors:* Jane Doe, John Smith, et al.  
-        *DOI:* [10.1234/gdtd.2026.abcd](https://doi.org)  
-        *License:* CC-BY 4.0  
-        ---
-        """)
+        # Frissített, diszkrét hivatkozás
+        st.markdown(f"""
+        <div class="small-citation">
+        CITATION<br>
+        J. Besenyő, D. Edelmann: Global Drone Terrorism Database (GDTD)<br>
+        Source: Figshare database<br>
+        License: CC-BY 4.0
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("---")
         st.title("FILTERS")
         
         # Source Filter
@@ -103,7 +109,7 @@ if not df_raw.empty:
         if sel_countries:
             df_filtered = df_filtered[df_filtered[country_col].isin(sel_countries)]
 
-    # --- 4. Main Display (Top Row) ---
+    # --- 4. Main Display ---
     head_col, m1, m2, m3 = st.columns([2.5, 1, 1, 1])
     with head_col:
         st.markdown("<h3 style='margin-top:10px;'>Global Drone Terrorism Database</h3>", unsafe_allow_html=True)
@@ -126,7 +132,7 @@ if not df_raw.empty:
         color=source_col,
         color_discrete_map={'GTD': '#FF8C00', 'ACLED': '#00FF41'},
         hover_name=country_col,
-        zoom=1.4, height=550, mapbox_style="carto-darkmatter"
+        zoom=1.4, height=520, mapbox_style="carto-darkmatter"
     )
     fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, paper_bgcolor='rgba(0,0,0,0)', legend=dict(font=dict(color="white")))
     st.plotly_chart(fig_map, use_container_width=True)
@@ -135,7 +141,6 @@ if not df_raw.empty:
     t1, t2 = st.tabs(["STATISTICS", "DATA & EXPORT"])
     
     with t1:
-        # Row 1: Time Trend & Top Groups
         c1, c2 = st.columns(2)
         with c1:
             st.subheader("Incident Trend")
@@ -149,7 +154,6 @@ if not df_raw.empty:
             fig_g.update_layout(yaxis={'categoryorder':'total ascending'})
             st.plotly_chart(fig_g, use_container_width=True)
 
-        # Row 2: Attack Types & Fatality Distribution
         c3, c4 = st.columns(2)
         with c3:
             st.subheader("Attack Types")
