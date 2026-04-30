@@ -40,21 +40,20 @@ st.markdown("""
 
     /* FŐCÍM: Még nagyobb méret */
     .main-title {
-        font-size: 2.5rem; /* Megnövelve 1.8-ról */
+        font-size: 3rem; /* Megnövelve 2.5-ről 3-ra */
         font-weight: bold;
-        line-height: 1.1;
+        line-height: 1.0;
         color: #FFFFFF;
         margin-top: 5px;
-        margin-bottom: 20px;
+        margin-bottom: 0px;
     }
 
-    /* Metric kártyák (Balra igazítva, fehér széllel) */
+    /* Metric kártyák (Fehér széllel) */
     [data-testid="stMetric"] {
         background-color: #1e2124;
         padding: 10px 15px;
         border-radius: 4px;
-        border-left: 3px solid #FFFFFF; /* Türkiz helyett Fehér */
-        margin-bottom: 10px;
+        border-left: 3px solid #FFFFFF;
         width: 100%;
     }
     [data-testid="stMetricLabel"] { color: #999999 !important; font-size: 0.8rem !important; }
@@ -121,41 +120,44 @@ if not df_raw.empty:
         if sel_countries:
             df_filtered = df_filtered[df_filtered[country_col].isin(sel_countries)]
 
-    # --- 4. Main Layout (Bal oldali sáv metrikákkal + Jobb oldali térkép) ---
-    col_left, col_right = st.columns([1, 4])
+    # --- 4. Main Header (Felirat és Metrikák egymás mellett) ---
+    header_col1, header_col2, header_col3, header_col4 = st.columns([2.5, 1, 1, 1])
 
-    with col_left:
+    with header_col1:
         st.markdown('<p class="main-title">Global Drone<br>Terrorism Database</p>', unsafe_allow_html=True)
-        
+    
+    with header_col2:
         st.metric("INCIDENTS", len(df_filtered))
-        
+    
+    with header_col3:
         st.metric("COUNTRIES", df_filtered[country_col].nunique())
-        
+    
+    with header_col4:
         f_val = pd.to_numeric(df_filtered[fatal_col], errors='coerce').sum()
         st.metric("FATALITIES", int(f_val))
 
-    with col_right:
-        # --- 5. Map ---
-        df_filtered[lat_col] = pd.to_numeric(df_filtered[lat_col], errors='coerce')
-        df_filtered[lon_col] = pd.to_numeric(df_filtered[lon_col], errors='coerce')
-        df_map = df_filtered.dropna(subset=[lat_col, lon_col])
+    st.markdown("<br>", unsafe_allow_html=True)
 
-        fig_map = px.scatter_mapbox(
-            df_map, lat=lat_col, lon=lon_col, 
-            size=pd.to_numeric(df_map[fatal_col], errors='coerce').fillna(0) + 3,
-            color=source_col,
-            color_discrete_map={'GTD': '#FF8C00', 'ACLED': '#00FF41'},
-            hover_name=country_col,
-            zoom=1.2, height=600, mapbox_style="carto-darkmatter"
-        )
-        fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, paper_bgcolor='rgba(0,0,0,0)', legend=dict(font=dict(color="white")))
-        st.plotly_chart(fig_map, use_container_width=True)
+    # --- 5. Map (Teljes szélességben a metrikák alatt) ---
+    df_filtered[lat_col] = pd.to_numeric(df_filtered[lat_col], errors='coerce')
+    df_filtered[lon_col] = pd.to_numeric(df_filtered[lon_col], errors='coerce')
+    df_map = df_filtered.dropna(subset=[lat_col, lon_col])
 
-    # --- 6. Analytics (Módosítva 2x2 elrendezésre) ---
+    fig_map = px.scatter_mapbox(
+        df_map, lat=lat_col, lon=lon_col, 
+        size=pd.to_numeric(df_map[fatal_col], errors='coerce').fillna(0) + 3,
+        color=source_col,
+        color_discrete_map={'GTD': '#FF8C00', 'ACLED': '#00FF41'},
+        hover_name=country_col,
+        zoom=1.2, height=600, mapbox_style="carto-darkmatter"
+    )
+    fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, paper_bgcolor='rgba(0,0,0,0)', legend=dict(font=dict(color="white")))
+    st.plotly_chart(fig_map, use_container_width=True)
+
+    # --- 6. Analytics (2x2 elrendezés) ---
     st.markdown("---")
     t1, t2 = st.tabs(["STATISTICS", "DATA & EXPORT"])
     with t1:
-        # Első sor
         r1c1, r1c2 = st.columns(2)
         with r1c1:
             st.subheader("Trend")
@@ -168,7 +170,6 @@ if not df_raw.empty:
             fig_g = px.bar(top_groups, x='count', y=group_col, orientation='h', template="plotly_dark", color_discrete_sequence=['#FFFFFF'])
             st.plotly_chart(fig_g, use_container_width=True)
 
-        # Második sor
         r2c1, r2c2 = st.columns(2)
         with r2c1:
             st.subheader("Attack Types")
