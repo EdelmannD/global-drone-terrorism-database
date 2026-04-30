@@ -2,16 +2,16 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# --- 1. Page Config & CSS (Szigorúan sötét háttér) ---
+# --- 1. Page Config & CSS ---
 st.set_page_config(page_title="GDTD Dashboard", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
     <style>
-    /* Teljes alkalmazás sötétítése */
+    /* Alap háttér és szöveg színek */
     .stApp { background-color: #121417; color: #F0F2F6; }
     [data-testid="stSidebar"] { background-color: #1a1d21; border-right: 1px solid #333; }
     
-    /* Világos szürke szövegek a jobb láthatóságért */
+    /* Világos szürke feliratok a jobb olvashatóságért */
     p, span, label, .stMetric label { color: #D1D5DB !important; } 
 
     /* Főcím - Kompakt és Fehér */
@@ -23,13 +23,14 @@ st.markdown("""
         margin-top: -15px;
     }
 
-    /* Metric kártyák - Nincs fehér háttér, sötét design */
+    /* Metric kártyák - Sötét design, jobbra zárt tartalommal */
     [data-testid="stMetric"] {
         background-color: #1e2124;
         padding: 5px 12px;
         border-radius: 4px;
         border-left: 3px solid #FFFFFF;
         margin-top: -15px;
+        text-align: right;
     }
     
     [data-testid="stMetricValue"] {
@@ -37,7 +38,7 @@ st.markdown("""
         font-size: 1.6rem !important;
     }
 
-    /* Padding csökkentése a tetején */
+    /* Térközök minimalizálása */
     .block-container { padding-top: 1.2rem !important; }
     hr { margin-top: 0.5rem !important; margin-bottom: 0.5rem !important; }
 
@@ -78,7 +79,7 @@ if not df_raw.empty:
     fatal_col, source_col = 'nkill', 'data_source'
     group_col, type_col = 'gname', 'attacktype1_txt'
 
-    # --- 3. Sidebar ---
+    # --- 3. Sidebar Filters ---
     with st.sidebar:
         st.markdown("### Filters")
         sources = sorted(df_raw[source_col].unique()) if source_col in df_raw.columns else []
@@ -90,8 +91,8 @@ if not df_raw.empty:
             yr_range = st.select_slider("Period", options=years, value=(min(years), max(years)))
             df_filtered = df_filtered[(df_filtered[year_col] >= yr_range[0]) & (df_filtered[year_col] <= yr_range[1])]
 
-    # --- 4. Header Sáv (Title + Metrics) ---
-    h_col1, h_col2, h_col3, h_col4 = st.columns([2.5, 1, 1, 1])
+    # --- 4. Header (Jobbra igazított metrikákkal a térkép széléhez) ---
+    h_col1, h_col2, h_col3, h_col4 = st.columns([5, 1, 1, 1])
     
     with h_col1:
         st.markdown('<p class="main-title">GLOBAL DRONE<br>TERRORISM DATABASE</p>', unsafe_allow_html=True)
@@ -105,7 +106,7 @@ if not df_raw.empty:
 
     st.markdown("---")
 
-    # --- 5. Térkép ---
+    # --- 5. Main Map ---
     df_filtered[lat_col] = pd.to_numeric(df_filtered[lat_col], errors='coerce')
     df_filtered[lon_col] = pd.to_numeric(df_filtered[lon_col], errors='coerce')
     df_map = df_filtered.dropna(subset=[lat_col, lon_col])
@@ -120,7 +121,7 @@ if not df_raw.empty:
     fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, paper_bgcolor='rgba(0,0,0,0)')
     st.plotly_chart(fig_map, use_container_width=True)
 
-    # --- 6. Statisztikák (Fekete-Fehér) ---
+    # --- 6. Statistics Grid (Fekete-Fehér) ---
     st.markdown("### STATISTICS")
 
     def apply_bw_style(fig):
@@ -171,4 +172,4 @@ if not df_raw.empty:
         st.plotly_chart(fig4, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 else:
-    st.error("Dataset not found.")
+    st.error("Adat hiba vagy a fájl nem található.")
