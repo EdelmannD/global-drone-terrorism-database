@@ -11,7 +11,7 @@ st.markdown("""
     .stApp { background-color: #121417; color: #F0F2F6; }
     [data-testid="stSidebar"] { background-color: #1a1d21; border-right: 1px solid #333; }
     
-    /* Minden felirat és label világosítása a sötét szürke helyett */
+    /* Feliratok világosítása */
     p, span, label, div, h1, h2, h3, .stMetric label, [data-testid="stMarkdownContainer"] p, 
     .stMultiSelect label, .stSlider label { 
         color: #F0F2F6 !important; 
@@ -38,7 +38,7 @@ st.markdown("""
         margin-bottom: 0;
     }
 
-    /* Metric kártyák - Beljebb húzva */
+    /* Metric kártyák */
     [data-testid="stMetric"] {
         background-color: #1e2124;
         padding: 5px 12px;
@@ -52,16 +52,26 @@ st.markdown("""
         font-size: 1.8rem !important;
     }
 
-    .block-container { padding-top: 1rem !important; padding-bottom: 0rem !important; }
+    .block-container { padding-top: 1rem !important; padding-bottom: 2rem !important; }
     hr { margin-top: 0.5rem !important; margin-bottom: 0.5rem !important; }
 
-    /* Chart konténer */
+    /* Chart konténer - Fekete kerettel */
     .chart-container {
         background-color: #FFFFFF;
-        padding: 15px;
-        border-radius: 4px;
-        border: 1px solid #000000;
+        padding: 10px;
+        border-radius: 2px;
+        border: 2px solid #000000;
         margin-bottom: 20px;
+    }
+
+    /* Diszkrét lábjegyzet stílus */
+    .footer-note {
+        font-size: 0.75rem;
+        color: #888888 !important;
+        margin-top: 40px;
+        border-top: 1px solid #333;
+        padding-top: 10px;
+        line-height: 1.4;
     }
     
     header[data-testid="stHeader"] { background-color: rgba(0,0,0,0) !important; }
@@ -92,14 +102,13 @@ if not df_raw.empty:
     fatal_col, source_col = 'nkill', 'data_source'
     group_col, type_col = 'gname', 'attacktype1_txt'
 
-    # --- 3. Sidebar Filters & Citation ---
+    # --- 3. Sidebar Filters ---
     with st.sidebar:
-        # CITATION A SIDEBAR TETEJÉN
         st.markdown(f"""
         <div class="sidebar-cite">
         <b>Cite as:</b><br>
         Besenyő, J.; Edelmann, D. (2026): Global Drone Terrorism Database (GDTD). Figshare. <br>
-        <a href="https://doi.org/10.6084/m9.figshare.32128399" target="_blank">DOI: 110.6084/m9.figshare.32128399</a><br>
+        <a href="https://doi.org/10.6084/m9.figshare.32128399" target="_blank">DOI: 10.6084/m9.figshare.32128399</a><br>
         License: CC BY 4.0
         </div>
         """, unsafe_allow_html=True)
@@ -114,7 +123,7 @@ if not df_raw.empty:
             yr_range = st.select_slider("Period", options=years, value=(min(years), max(years)))
             df_filtered = df_filtered[(df_filtered[year_col] >= yr_range[0]) & (df_filtered[year_col] <= yr_range[1])]
 
-    # --- 4. Header: Title + Metrics (spacer-rel beljebb húzva) ---
+    # --- 4. Header ---
     header_col1, header_col2, header_col3, header_col4, spacer = st.columns([2.5, 1, 1, 1, 0.4])
     
     with header_col1:
@@ -152,10 +161,26 @@ if not df_raw.empty:
 
     def apply_bw_style(fig):
         fig.update_layout(
-            plot_bgcolor='white', paper_bgcolor='white', font_color='black',
-            margin=dict(l=40, r=20, t=40, b=40),
-            xaxis=dict(showgrid=False, linecolor='black', ticks='inside'),
-            yaxis=dict(showgrid=False, linecolor='black', ticks='inside'),
+            plot_bgcolor='white', 
+            paper_bgcolor='white', 
+            font=dict(family="Arial", size=12, color="black"),
+            margin=dict(l=50, r=20, t=50, b=50),
+            xaxis=dict(
+                showgrid=False, 
+                linecolor='black', 
+                ticks='inside', 
+                tickcolor='black',
+                tickfont=dict(color='black'),
+                title_font=dict(color='black')
+            ),
+            yaxis=dict(
+                showgrid=False, 
+                linecolor='black', 
+                ticks='inside', 
+                tickcolor='black',
+                tickfont=dict(color='black'),
+                title_font=dict(color='black')
+            ),
             showlegend=False
         )
         return fig
@@ -194,8 +219,21 @@ if not df_raw.empty:
         src = df_filtered[source_col].value_counts().reset_index()
         fig4 = px.pie(src, names=source_col, values='count', title="Data Sources", hole=0.4)
         fig4.update_traces(marker=dict(colors=['black', '#cccccc'], line=dict(color='white', width=1)))
-        fig4.update_layout(paper_bgcolor='white', font_color='black', margin=dict(t=40, b=20, l=10, r=10))
+        fig4.update_layout(
+            paper_bgcolor='white', 
+            font=dict(family="Arial", color='black'),
+            margin=dict(t=50, b=20, l=10, r=10)
+        )
         st.plotly_chart(fig4, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
+
+    # --- 7. Footer Citations ---
+    st.markdown("""
+        <div class="footer-note">
+            Az ACLED adatok forrása: C. Raleigh, A. Linke, H. Hegre, J. Karlsen, Introducing ACLED: An armed conflict location and event dataset, J. Peace Res. 47 (2010).<br>
+            A GTD adatok forrása: START - National Consortium for the Study of Terrorism and Responses to Terrorism, Global Terrorism Database, 1970 - 2022, 2025 database, 2025.
+        </div>
+    """, unsafe_allow_html=True)
+
 else:
     st.error("Dataset error. Please check your CSV file.")
