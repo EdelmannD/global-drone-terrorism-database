@@ -98,8 +98,8 @@ if not df_raw.empty:
         st.markdown(f"""
         <div class="sidebar-cite">
         <b>Cite as:</b><br>
-        Besenyő, J.; Edelmann, D. (2024): Global Drone Terrorism Database (GDTD). Figshare. <br>
-        <a href="https://doi.org/10.6084/m9.figshare.25200650" target="_blank">DOI: 10.6084/m9.figshare.25200650</a><br>
+        Besenyő, J.; Edelmann, D. (2026): Global Drone Terrorism Database (GDTD). Figshare. <br>
+        <a href="https://doi.org/10.6084/m9.figshare.32128399" target="_blank">DOI: 110.6084/m9.figshare.32128399</a><br>
         License: CC BY 4.0
         </div>
         """, unsafe_allow_html=True)
