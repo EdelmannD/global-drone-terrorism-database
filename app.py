@@ -7,44 +7,26 @@ st.set_page_config(page_title="GDTD Dashboard", layout="wide", initial_sidebar_s
 
 st.markdown("""
     <style>
-    /* Alap háttér és általános világos szövegek */
     .stApp { background-color: #121417; color: #F0F2F6; }
     [data-testid="stSidebar"] { background-color: #1a1d21; border-right: 1px solid #333; }
     
-    /* Csak a főoldali szövegek legyenek világosak alapból */
     p, span, label, div, h1, h2, h3, .stMetric label, [data-testid="stMarkdownContainer"] p, 
     .stMultiSelect label, .stSlider label { 
         color: #F0F2F6 !important; 
     } 
 
-    /* --- FELUGRÓ ABLAK (DROPDOWN) JAVÍTÁSA --- */
-    /* Ez célozza meg a tényleges lenyíló listát */
-    div[data-baseweb="popover"] * {
-        color: #000000 !important; /* Minden szöveg fekete a felugróban */
-    }
-    
-    div[data-baseweb="popover"] {
-        background-color: #ffffff !important; /* Fehér háttér */
-        border-radius: 4px;
-    }
+    /* DROPDOWN JAVÍTÁSA */
+    div[data-baseweb="popover"] * { color: #000000 !important; }
+    div[data-baseweb="popover"] { background-color: #ffffff !important; border-radius: 4px; }
+    div[role="listbox"] li { background-color: #ffffff !important; color: #000000 !important; }
+    div[role="listbox"] li:hover { background-color: #eeeeee !important; }
 
-    /* Kifejezetten a listaelemek háttere és szövege */
-    div[role="listbox"] li {
-        background-color: #ffffff !important;
-        color: #000000 !important;
-    }
-
-    div[role="listbox"] li:hover {
-        background-color: #eeeeee !important;
-    }
-
-    /* --- GÖRDÍTŐSÁV --- */
+    /* GÖRDÍTŐSÁV */
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: #1a1d21; }
     ::-webkit-scrollbar-thumb { background: #4B4B4B; border-radius: 10px; }
     ::-webkit-scrollbar-thumb:hover { background: #00FF41; }
 
-    /* Sidebar Citation box */
     .sidebar-cite {
         font-size: 0.85rem !important;
         background-color: #262730;
@@ -55,28 +37,15 @@ st.markdown("""
     }
     .sidebar-cite a { color: #D3D3D3 !important; text-decoration: underline; }
 
-    /* Beviteli mező (Multiselect zárt állapotban) */
     div[data-baseweb="select"] > div {
         background-color: #262730 !important;
         border-color: #4B4B4B !important;
     }
 
-    /* --- SLIDER DESIGN --- */
     div[data-baseweb="slider"] > div > div > div { background-color: #00FF41 !important; }
     div[role="slider"] { background-color: #00FF41 !important; border: 2px solid #FFFFFF !important; }
-
-    /* Tooltip */
-    div[data-baseweb="tooltip"] {
-        background-color: #262730 !important;
-        color: white !important;
-        border: 1px solid #4B4B4B !important;
-    }
     
-    /* Multiselect tag-ek (kiválasztott elemek a mezőben) */
-    span[data-baseweb="tag"] {
-        background-color: #444 !important;
-        color: white !important;
-    }
+    span[data-baseweb="tag"] { background-color: #444 !important; color: white !important; }
 
     .main-title {
         font-size: 1.6rem !important;
@@ -95,12 +64,8 @@ st.markdown("""
         margin-top: -10px;
     }
     
-    [data-testid="stMetricValue"] {
-        color: #FFFFFF !important;
-        font-size: 1.8rem !important;
-    }
+    [data-testid="stMetricValue"] { color: #FFFFFF !important; font-size: 1.8rem !important; }
 
-    .block-container { padding-top: 1rem !important; padding-bottom: 2rem !important; }
     .chart-container {
         background-color: #FFFFFF;
         padding: 10px;
@@ -116,7 +81,6 @@ st.markdown("""
         border-top: 1px solid #333;
         padding-top: 10px;
     }
-    
     header[data-testid="stHeader"] { background-color: rgba(0,0,0,0) !important; }
     </style>
     """, unsafe_allow_html=True)
@@ -158,18 +122,25 @@ if not df_raw.empty:
 
         st.markdown("### Filters")
         
-        # Data Source Filter
+        # 1. Data Source Filter
         sources = sorted(df_raw[source_col].unique()) if source_col in df_raw.columns else []
         selected_sources = st.multiselect("Data Source", sources, default=sources)
         df_filtered = df_raw[df_raw[source_col].isin(selected_sources)].copy()
 
-        # Attack Type Filter
+        # 2. Country Filter
+        countries = sorted(df_filtered[country_col].dropna().unique()) if country_col in df_filtered.columns else []
+        selected_countries = st.multiselect("Country", countries, default=countries)
+        df_filtered = df_filtered[df_filtered[country_col].isin(selected_countries)]
+
+        # 3. Attack Type Filter (ACLED N/A kezeléssel)
         if type_col in df_filtered.columns:
-            types = sorted(df_filtered[type_col].dropna().unique())
+            # Kitöltjük az üres mezőket "N/A"-val, hogy választható legyen
+            df_filtered[type_col] = df_filtered[type_col].fillna("N/A")
+            types = sorted(df_filtered[type_col].unique())
             selected_types = st.multiselect("Attack Type", types, default=types)
             df_filtered = df_filtered[df_filtered[type_col].isin(selected_types)]
 
-        # Year Slider
+        # 4. Year Slider
         if year_col in df_filtered.columns:
             years = sorted(df_filtered[year_col].dropna().unique().astype(int))
             if years:
@@ -178,16 +149,12 @@ if not df_raw.empty:
 
     # --- 4. Header ---
     header_col1, header_col2, header_col3, header_col4, spacer = st.columns([2.5, 1, 1, 1, 0.4])
-    
     with header_col1:
         st.markdown('<p class="main-title">GLOBAL DRONE<br>TERRORISM DATABASE</p>', unsafe_allow_html=True)
-    
     with header_col2:
         st.metric("INCIDENTS", len(df_filtered))
-    
     with header_col3:
-        st.metric("COUNTRIES", df_filtered[country_col].nunique())
-    
+        st.metric("COUNTRIES", df_filtered[country_col].nunique() if not df_filtered.empty else 0)
     with header_col4:
         f_val = pd.to_numeric(df_filtered[fatal_col], errors='coerce').sum()
         st.metric("FATALITIES", int(f_val if pd.notnull(f_val) else 0))
@@ -195,84 +162,94 @@ if not df_raw.empty:
     st.markdown("---")
 
     # --- 5. Main Map ---
-    df_filtered[lat_col] = pd.to_numeric(df_filtered[lat_col], errors='coerce')
-    df_filtered[lon_col] = pd.to_numeric(df_filtered[lon_col], errors='coerce')
-    df_filtered[fatal_col] = pd.to_numeric(df_filtered[fatal_col], errors='coerce').fillna(0)
-    
-    df_filtered['lethality'] = df_filtered[fatal_col].apply(lambda x: "Fatal Attack" if x > 0 else "Non-Fatal")
-    df_map = df_filtered.dropna(subset=[lat_col, lon_col])
-    
-    fig_map = px.scatter_mapbox(
-        df_map, lat=lat_col, lon=lon_col, 
-        size=df_map[fatal_col] + 3,
-        color='lethality',
-        color_discrete_map={'Fatal Attack': '#FF8C00', 'Non-Fatal': '#00FF41'},
-        zoom=1.5, height=520, mapbox_style="carto-darkmatter",
-        category_orders={"lethality": ["Fatal Attack", "Non-Fatal"]}
-    )
-    fig_map.update_layout(
-        margin={"r":0,"t":0,"l":0,"b":0}, 
-        paper_bgcolor='rgba(0,0,0,0)',
-        legend=dict(
-            title_text="",
-            yanchor="top", y=0.99, xanchor="left", x=0.01,
-            bgcolor="rgba(0,0,0,0.5)", font=dict(color="white")
+    if not df_filtered.empty:
+        df_filtered[lat_col] = pd.to_numeric(df_filtered[lat_col], errors='coerce')
+        df_filtered[lon_col] = pd.to_numeric(df_filtered[lon_col], errors='coerce')
+        df_filtered[fatal_col] = pd.to_numeric(df_filtered[fatal_col], errors='coerce').fillna(0)
+        
+        df_filtered['lethality'] = df_filtered[fatal_col].apply(lambda x: "Fatal Attack" if x > 0 else "Non-Fatal")
+        df_map = df_filtered.dropna(subset=[lat_col, lon_col])
+        
+        fig_map = px.scatter_mapbox(
+            df_map, lat=lat_col, lon=lon_col, 
+            size=df_map[fatal_col] + 3,
+            color='lethality',
+            color_discrete_map={'Fatal Attack': '#FF8C00', 'Non-Fatal': '#00FF41'},
+            zoom=1.5, height=520, mapbox_style="carto-darkmatter",
+            category_orders={"lethality": ["Fatal Attack", "Non-Fatal"]},
+            hover_data={lat_col:False, lon_col:False, 'lethality':True, fatal_col:True}
         )
-    )
-    st.plotly_chart(fig_map, use_container_width=True)
-
-    # --- 6. Statistics Grid ---
-    st.markdown("### STATISTICS")
-
-    def apply_bw_style(fig):
-        fig.update_layout(
-            plot_bgcolor='white', 
-            paper_bgcolor='white', 
-            font=dict(family="Arial", size=12, color="black"),
-            margin=dict(l=50, r=20, t=50, b=50),
-            xaxis=dict(showgrid=False, linecolor='black', ticks='inside', tickcolor='black', tickfont=dict(color='black')),
-            yaxis=dict(showgrid=False, linecolor='black', ticks='inside', tickcolor='black', tickfont=dict(color='black')),
-            showlegend=False
+        fig_map.update_layout(
+            margin={"r":0,"t":0,"l":0,"b":0}, 
+            paper_bgcolor='rgba(0,0,0,0)',
+            legend=dict(
+                title_text="",
+                yanchor="top", y=0.99, xanchor="left", x=0.01,
+                bgcolor="rgba(0,0,0,0.5)", font=dict(color="white")
+            )
         )
-        return fig
+        st.plotly_chart(fig_map, use_container_width=True)
 
-    r1c1, r1c2 = st.columns(2)
-    r2c1, r2c2 = st.columns(2)
+        # --- 6. Statistics Grid ---
+        st.markdown("### STATISTICS")
 
-    with r1c1:
-        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-        trend = df_filtered.groupby(year_col).size().reset_index(name='count')
-        fig1 = px.line(trend, x=year_col, y='count', title="Trend over Time")
-        fig1.update_traces(line_color='black', line_width=2)
-        st.plotly_chart(apply_bw_style(fig1), use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+        def apply_bw_style(fig):
+            fig.update_layout(
+                plot_bgcolor='white', paper_bgcolor='white', 
+                font=dict(family="Arial", size=12, color="black"),
+                margin=dict(l=50, r=20, t=50, b=50),
+                xaxis=dict(showgrid=False, linecolor='black', ticks='inside'),
+                yaxis=dict(showgrid=False, linecolor='black', ticks='inside'),
+                showlegend=False
+            )
+            return fig
 
-    with r1c2:
-        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-        top_g = df_filtered[group_col].value_counts().head(8).reset_index()
-        top_g[group_col] = top_g[group_col].astype(str).str.wrap(25).replace('\n', '<br>', regex=True)
-        fig2 = px.bar(top_g, x='count', y=group_col, orientation='h', title="Top Groups")
-        fig2.update_traces(marker_color='black')
-        st.plotly_chart(apply_bw_style(fig2), use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+        r1c1, r1c2 = st.columns(2)
+        r2c1, r2c2 = st.columns(2)
 
-    with r2c1:
-        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-        top_t = df_filtered[type_col].value_counts().head(8).reset_index()
-        top_t[type_col] = top_t[type_col].astype(str).str.wrap(25).replace('\n', '<br>', regex=True)
-        fig3 = px.bar(top_t, x=type_col, y='count', title="Attack Types")
-        fig3.update_traces(marker_color='black')
-        st.plotly_chart(apply_bw_style(fig3), use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+        with r1c1:
+            st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+            trend = df_filtered.groupby(year_col).size().reset_index(name='count')
+            fig1 = px.line(trend, x=year_col, y='count', title="Trend over Time")
+            fig1.update_traces(line_color='black', line_width=2)
+            st.plotly_chart(apply_bw_style(fig1), use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
 
-    with r2c2:
-        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-        src = df_filtered[source_col].value_counts().reset_index()
-        fig4 = px.pie(src, names=source_col, values='count', title="Data Sources", hole=0.4)
-        fig4.update_traces(marker=dict(colors=['black', '#cccccc'], line=dict(color='white', width=1)))
-        fig4.update_layout(paper_bgcolor='white', font=dict(family="Arial", color='black'), margin=dict(t=50, b=20, l=10, r=10))
-        st.plotly_chart(fig4, use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+        with r1c2:
+            st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+            top_g = df_filtered[group_col].value_counts().head(8).reset_index()
+            top_g[group_col] = top_g[group_col].astype(str).str.wrap(25).replace('\n', '<br>', regex=True)
+            fig2 = px.bar(top_g, x='count', y=group_col, orientation='h', title="Top Groups")
+            fig2.update_traces(marker_color='black')
+            st.plotly_chart(apply_bw_style(fig2), use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
 
+        with r2c1:
+            st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+            top_t = df_filtered[type_col].value_counts().head(8).reset_index()
+            top_t[type_col] = top_t[type_col].astype(str).str.wrap(25).replace('\n', '<br>', regex=True)
+            fig3 = px.bar(top_t, x=type_col, y='count', title="Attack Types")
+            fig3.update_traces(marker_color='black')
+            st.plotly_chart(apply_bw_style(fig3), use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        with r2c2:
+            st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+            src = df_filtered[source_col].value_counts().reset_index()
+            fig4 = px.pie(src, names=source_col, values='count', title="Data Sources", hole=0.4)
+            fig4.update_traces(marker=dict(colors=['black', '#cccccc'], line=dict(color='white', width=1)))
+            fig4.update_layout(paper_bgcolor='white', font=dict(family="Arial", color='black'))
+            st.plotly_chart(fig4, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+    else:
+        st.warning("No data available for the selected filters.")
+
+    # --- 7. Footer ---
+    st.markdown("""
+        <div class="footer-note">
+            Data sources:<br>
+            ACLED: C. Raleigh et al. (2010) | GTD: START Consortium (2025)<br>
+        </div>
+    """, unsafe_allow_html=True)
 else:
     st.error("Dataset error. Please check your CSV file.")
