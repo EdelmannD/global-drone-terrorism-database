@@ -11,29 +11,38 @@ st.markdown("""
     .stApp { background-color: #121417; color: #F0F2F6; }
     [data-testid="stSidebar"] { background-color: #1a1d21; border-right: 1px solid #333; }
     
+    /* Csak a főoldali szövegek legyenek világosak alapból */
     p, span, label, div, h1, h2, h3, .stMetric label, [data-testid="stMarkdownContainer"] p, 
     .stMultiSelect label, .stSlider label { 
         color: #F0F2F6 !important; 
     } 
 
-    /* --- GÖRDÍTŐSÁV STÍLUS (SCROLLBAR) --- */
+    /* --- FELUGRÓ ABLAK (DROPDOWN) JAVÍTÁSA --- */
+    /* Ez célozza meg a tényleges lenyíló listát */
+    div[data-baseweb="popover"] * {
+        color: #000000 !important; /* Minden szöveg fekete a felugróban */
+    }
+    
+    div[data-baseweb="popover"] {
+        background-color: #ffffff !important; /* Fehér háttér */
+        border-radius: 4px;
+    }
+
+    /* Kifejezetten a listaelemek háttere és szövege */
+    div[role="listbox"] li {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+    }
+
+    div[role="listbox"] li:hover {
+        background-color: #eeeeee !important;
+    }
+
+    /* --- GÖRDÍTŐSÁV --- */
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: #1a1d21; }
     ::-webkit-scrollbar-thumb { background: #4B4B4B; border-radius: 10px; }
     ::-webkit-scrollbar-thumb:hover { background: #00FF41; }
-
-    /* --- SELECTOR / MULTISELECT FIXES --- */
-    /* A lenyíló lista (dropdown) szövegeinek javítása */
-    div[data-baseweb="popover"] ul {
-        background-color: #ffffff !important; /* Fehér háttér a listának */
-    }
-    div[data-baseweb="popover"] li {
-        color: #000000 !important; /* Fekete szöveg az elemeknek */
-    }
-    /* Kijelölt elem a listában */
-    div[data-baseweb="popover"] li:hover {
-        background-color: #f0f0f0 !important;
-    }
 
     /* Sidebar Citation box */
     .sidebar-cite {
@@ -46,29 +55,24 @@ st.markdown("""
     }
     .sidebar-cite a { color: #D3D3D3 !important; text-decoration: underline; }
 
-    /* Multiselect beviteli mező háttér */
+    /* Beviteli mező (Multiselect zárt állapotban) */
     div[data-baseweb="select"] > div {
         background-color: #262730 !important;
         border-color: #4B4B4B !important;
     }
 
-    /* --- SLIDER (CSÚSZKA) --- */
-    div[data-baseweb="slider"] > div > div > div {
-        background-color: #00FF41 !important; 
-    }
-    div[role="slider"] {
-        background-color: #00FF41 !important;
-        border: 2px solid #FFFFFF !important;
-    }
+    /* --- SLIDER DESIGN --- */
+    div[data-baseweb="slider"] > div > div > div { background-color: #00FF41 !important; }
+    div[role="slider"] { background-color: #00FF41 !important; border: 2px solid #FFFFFF !important; }
 
-    /* Tooltip fix */
+    /* Tooltip */
     div[data-baseweb="tooltip"] {
         background-color: #262730 !important;
         color: white !important;
         border: 1px solid #4B4B4B !important;
     }
     
-    /* Multiselect címkék (amiket már kiválasztottál) */
+    /* Multiselect tag-ek (kiválasztott elemek a mezőben) */
     span[data-baseweb="tag"] {
         background-color: #444 !important;
         color: white !important;
@@ -97,8 +101,6 @@ st.markdown("""
     }
 
     .block-container { padding-top: 1rem !important; padding-bottom: 2rem !important; }
-    hr { margin-top: 0.5rem !important; margin-bottom: 0.5rem !important; }
-
     .chart-container {
         background-color: #FFFFFF;
         padding: 10px;
@@ -113,7 +115,6 @@ st.markdown("""
         margin-top: 40px;
         border-top: 1px solid #333;
         padding-top: 10px;
-        line-height: 1.4;
     }
     
     header[data-testid="stHeader"] { background-color: rgba(0,0,0,0) !important; }
@@ -272,15 +273,6 @@ if not df_raw.empty:
         fig4.update_layout(paper_bgcolor='white', font=dict(family="Arial", color='black'), margin=dict(t=50, b=20, l=10, r=10))
         st.plotly_chart(fig4, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
-
-    # --- 7. Footer Citations ---
-    st.markdown("""
-        <div class="footer-note">
-            Data sources:<br>
-            ACLED: C. Raleigh, A. Linke, H. Hegre, J. Karlsen, Introducing ACLED: An armed conflict location and event dataset, J. Peace Res. 47, 2010.<br>
-            GTD: START - National Consortium for the Study of Terrorism and Responses to Terrorism, Global Terrorism Database, 1970 - 2022, 2025 database, 2025.<br>
-        </div>
-    """, unsafe_allow_html=True)
 
 else:
     st.error("Dataset error. Please check your CSV file.")
