@@ -7,7 +7,6 @@ st.set_page_config(page_title="GDTD Dashboard", layout="wide", initial_sidebar_s
 
 st.markdown("""
     <style>
-    /* Streamlit alapértelmezett elemek elrejtése (fehér sáv alul és menü fent) */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
@@ -15,7 +14,6 @@ st.markdown("""
     .stApp { background-color: #121417; color: #F0F2F6; }
     [data-testid="stSidebar"] { background-color: #1a1d21; border-right: 1px solid #333; }
     
-    /* Elrendezés javítása */
     .block-container { 
         padding-top: 0.5rem !important; 
         padding-bottom: 2rem !important; 
@@ -27,7 +25,6 @@ st.markdown("""
         color: #F0F2F6 !important; 
     } 
 
-    /* DROPDOWN JAVÍTÁSA */
     div[data-baseweb="popover"] * { color: #000000 !important; }
     div[data-baseweb="popover"] { background-color: #ffffff !important; border-radius: 4px; }
     div[role="listbox"] li { background-color: #ffffff !important; color: #000000 !important; }
@@ -124,10 +121,15 @@ def load_data():
 df_raw = load_data()
 
 if not df_raw.empty:
+    # Oszlopok beállítása
     lat_col, lon_col = 'latitude', 'longitude'
     year_col, country_col = 'year', 'country_txt'
     fatal_col, source_col = 'nkill', 'data_source'
     group_col, type_col = 'gname', 'attacktype1_txt'
+    
+    # Új oszlopok a térképhez (ellenőrizd, hogy ezek a nevek vannak-e a CSV-ben!)
+    city_col = 'city' if 'city' in df_raw.columns else country_col
+    date_col = 'event_date' if 'event_date' in df_raw.columns else ('date' if 'date' in df_raw.columns else year_col)
 
     # --- 3. Sidebar Filters ---
     with st.sidebar:
@@ -198,7 +200,17 @@ if not df_raw.empty:
             color_discrete_map={'Fatal Attack': '#FF8C00', 'Non-Fatal': '#00FF41'},
             zoom=1.5, height=550, mapbox_style="carto-darkmatter",
             category_orders={"lethality": ["Fatal Attack", "Non-Fatal"]},
-            hover_data={lat_col:False, lon_col:False, 'lethality':True, fatal_col:True, group_col:True}
+            # ITT TÖRTÉNT A MÓDOSÍTÁS:
+            hover_name=city_col, # A buborék címe a Város lesz
+            hover_data={
+                lat_col: False, 
+                lon_col: False, 
+                'lethality': True, 
+                fatal_col: True, 
+                group_col: True,
+                date_col: True, # Dátum megjelenítése
+                'size': False   # A "size" címke elrejtése
+            }
         )
         fig_map.update_layout(
             margin={"r":0,"t":0,"l":0,"b":0}, 
