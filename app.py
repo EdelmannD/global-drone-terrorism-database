@@ -110,13 +110,13 @@ if not df_raw.empty:
         if sel_countries:
             df_filtered = df_filtered[df_filtered[country_col].isin(sel_countries)]
 
-    # --- 4. Main Header (Felirat és Metrikák egymás mellett) ---
-    # Az arányt 5:1:1:1-re állítottam, hogy a hatalmas betűk ne tolják el a többi mezőt
-    header_col1, header_col2, header_col3, header_col4 = st.columns([2.5, 1, 1, 1])
+    # --- 4. Main Header (Felirat és Metrikák szorosabban) ---
+    # Az arányt 1.8-ra vettem az első oszlopnál, így a metrikák közelebb csúsznak balra
+    header_col1, header_col2, header_col3, header_col4 = st.columns([1.8, 0.6, 0.6, 0.6])
 
     with header_col1:
-        # 6rem méret, inline HTML-el kényszerítve
-        st.markdown('<h1 style="font-size: 6rem !important; font-weight: bold; color: white; line-height: 0.9; margin: 0; padding: 0;">Global Drone<br>Terrorism Database</h1>', unsafe_allow_html=True)
+        # A display: inline-block segít, hogy csak annyi helyet foglaljon, amennyi a betű
+        st.markdown('<h1 style="font-size: 5rem !important; font-weight: bold; color: white; line-height: 0.85; margin: 0; padding: 0; display: inline-block;">Global Drone<br>Terrorism Database</h1>', unsafe_allow_html=True)
     
     with header_col2:
         st.metric("INCIDENTS", len(df_filtered))
