@@ -11,10 +11,22 @@ st.markdown("""
     .stApp { background-color: #121417; color: #F0F2F6; }
     [data-testid="stSidebar"] { background-color: #1a1d21; border-right: 1px solid #333; }
     
-    /* MINDEN szöveges elem kényszerítése világosra (Sidebar szűrők is!) */
-    p, span, label, div, h1, h2, h3, .stMetric label, [data-testid="stMarkdownContainer"] p, .stMultiSelect label { 
+    /* Minden felirat és label világosítása a sötét szürke helyett */
+    p, span, label, div, h1, h2, h3, .stMetric label, [data-testid="stMarkdownContainer"] p, 
+    .stMultiSelect label, .stSlider label { 
         color: #F0F2F6 !important; 
     } 
+
+    /* Sidebar Citation stílus */
+    .sidebar-cite {
+        font-size: 0.85rem !important;
+        background-color: #262730;
+        padding: 10px;
+        border-radius: 5px;
+        border: 1px solid #4B4B4B;
+        margin-bottom: 20px;
+    }
+    .sidebar-cite a { color: #00FF41 !important; text-decoration: none; }
 
     /* Cím stílus */
     .main-title {
@@ -24,15 +36,6 @@ st.markdown("""
         line-height: 1.0;
         margin-top: -10px;
         margin-bottom: 0;
-    }
-
-    /* Citation (Hivatkozás) stílus - Apró, dőlt, világosszürke */
-    .citation-text {
-        font-size: 0.75rem !important;
-        font-style: italic;
-        color: #BDC3C7 !important;
-        margin-top: 5px;
-        line-height: 1.2;
     }
 
     /* Metric kártyák - Beljebb húzva */
@@ -52,7 +55,7 @@ st.markdown("""
     .block-container { padding-top: 1rem !important; padding-bottom: 0rem !important; }
     hr { margin-top: 0.5rem !important; margin-bottom: 0.5rem !important; }
 
-    /* Fehér kártyák a statisztikához */
+    /* Chart konténer */
     .chart-container {
         background-color: #FFFFFF;
         padding: 15px;
@@ -61,8 +64,6 @@ st.markdown("""
         margin-bottom: 20px;
     }
     
-    .chart-title { color: #F0F2F6 !important; font-weight: bold; margin-bottom: 10px; }
-
     header[data-testid="stHeader"] { background-color: rgba(0,0,0,0) !important; }
     </style>
     """, unsafe_allow_html=True)
@@ -91,8 +92,18 @@ if not df_raw.empty:
     fatal_col, source_col = 'nkill', 'data_source'
     group_col, type_col = 'gname', 'attacktype1_txt'
 
-    # --- 3. Sidebar Filters ---
+    # --- 3. Sidebar Filters & Citation ---
     with st.sidebar:
+        # CITATION A SIDEBAR TETEJÉN
+        st.markdown(f"""
+        <div class="sidebar-cite">
+        <b>Cite as:</b><br>
+        Besenyő, J.; Edelmann, D. (2024): Global Drone Terrorism Database (GDTD). Figshare. <br>
+        <a href="https://doi.org/10.6084/m9.figshare.25200650" target="_blank">DOI: 10.6084/m9.figshare.25200650</a><br>
+        License: CC BY 4.0
+        </div>
+        """, unsafe_allow_html=True)
+
         st.markdown("### Filters")
         sources = sorted(df_raw[source_col].unique()) if source_col in df_raw.columns else []
         selected_sources = st.multiselect("Data Source", sources, default=sources)
@@ -103,13 +114,11 @@ if not df_raw.empty:
             yr_range = st.select_slider("Period", options=years, value=(min(years), max(years)))
             df_filtered = df_filtered[(df_filtered[year_col] >= yr_range[0]) & (df_filtered[year_col] <= yr_range[1])]
 
-    # --- 4. Header: Title + Metrics (spacer-rel beljebb húzva a Share gombtól) ---
+    # --- 4. Header: Title + Metrics (spacer-rel beljebb húzva) ---
     header_col1, header_col2, header_col3, header_col4, spacer = st.columns([2.5, 1, 1, 1, 0.4])
     
     with header_col1:
         st.markdown('<p class="main-title">GLOBAL DRONE<br>TERRORISM DATABASE</p>', unsafe_allow_html=True)
-        # --- CITATION SECTION ---
-        st.markdown('<p class="citation-text">Cite: J. Besenyő, D. Edelmann, GDTD Database, DOI: 10.13140/RG.2.2.12345.67890, CC BY-NC-SA 4.0</p>', unsafe_allow_html=True)
     
     with header_col2:
         st.metric("INCIDENTS", len(df_filtered))
@@ -133,13 +142,13 @@ if not df_raw.empty:
         size=pd.to_numeric(df_map[fatal_col], errors='coerce').fillna(0) + 3,
         color=source_col,
         color_discrete_map={'GTD': '#FF8C00', 'ACLED': '#00FF41'},
-        zoom=1.5, height=520, mapbox_style="carto-darkmatter" # Itt írd át "carto-positron"-ra ha világos tenger kell
+        zoom=1.5, height=520, mapbox_style="carto-darkmatter"
     )
     fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, paper_bgcolor='rgba(0,0,0,0)')
     st.plotly_chart(fig_map, use_container_width=True)
 
     # --- 6. Statistics Grid (2x2) ---
-    st.markdown('<h3 class="chart-title">STATISTICS</h3>', unsafe_allow_html=True)
+    st.markdown("### STATISTICS")
 
     def apply_bw_style(fig):
         fig.update_layout(
