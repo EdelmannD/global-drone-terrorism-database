@@ -14,12 +14,11 @@ st.markdown("""
     .stApp { background-color: #121417; color: #F0F2F6; }
     [data-testid="stSidebar"] { background-color: #1a1d21; border-right: 1px solid #333; }
     
-    /* LEJJER TOLT FELSŐ SÁV: Itt fixálva */
+    /* FINOMHANGOLT FELSŐ MARGÓ */
     .block-container { 
-        padding-top: 3.5rem !important; 
+        padding-top: 1.8rem !important; 
         padding-bottom: 2rem !important; 
     } 
-    /* Negatív margó eltávolítva */
     [data-testid="stVerticalBlock"] > div:first-child { margin-top: 0rem !important; }
 
     p, span, label, div, h1, h2, h3, .stMetric label, [data-testid="stMarkdownContainer"] p, 
@@ -268,4 +267,12 @@ if not df_raw.empty:
     else:
         st.warning("No data available.")
 
-    st.markdown('<div class="footer-note">Data sources: START GTD & ACLED (2026)</div>', unsafe_allow_html=True)
+    st.markdown("""
+        <div class="footer-note">
+            Data sources: <br>
+            START - National Consortium for the Study of Terrorism and Responses to Terrorism, Global Terrorism Database, 1970 - 2022, 2025 database, 2025. <br>
+            C. Raleigh, A. Linke, H. Hegre, J. Karlsen, Introducing ACLED: An armed conflict location and event dataset, J. Peace Res. 47, 2010.
+        </div>
+    """, unsafe_allow_html=True)
+else:
+    st.error("Dataset error. Please check your CSV file.")
