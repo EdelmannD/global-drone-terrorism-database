@@ -4,7 +4,8 @@ import plotly.express as px
 import io
 
 # --- 1. Page Config & Professional Dark Theme ---
-st.set_page_config(page_title="GDTD Dashboard", layout="wide")
+# initial_sidebar_state="expanded" ensures the menu is open on start
+st.set_page_config(page_title="GDTD Dashboard", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
     <style>
@@ -15,12 +16,20 @@ st.markdown("""
     [data-testid="stSidebar"] { background-color: #1a1d21; border-right: 1px solid #333; }
     [data-testid="stSidebar"] .stMarkdown p, [data-testid="stSidebar"] label { color: #E0E0E0 !important; }
     
-    /* FIX: Make the sidebar collapse button visible and white */
+    /* REMOVE WHITE TOP BAR but keep buttons */
+    header[data-testid="stHeader"] {
+        background-color: rgba(0,0,0,0) !important;
+        color: #FFFFFF !important;
+    }
+    
+    /* Sidebar collapse button visibility */
     [data-testid="stSidebarCollapsedControl"] {
         color: #FFFFFF !important;
-        background-color: rgba(255, 255, 255, 0.1);
-        border-radius: 0 5px 5px 0;
     }
+
+    /* Change Red/Accent colors to Gray in Sidebar (Sliders, Checkboxes) */
+    .stSlider [data-baseweb="slider"] [role="presentation"] { background-color: #808080 !important; }
+    .stMultiSelect [data-baseweb="tag"] { background-color: #444 !important; color: #EEE !important; }
 
     /* Metric Cards - Minimalist */
     [data-testid="stMetric"] {
@@ -32,8 +41,8 @@ st.markdown("""
     [data-testid="stMetricLabel"] { color: #AAAAAA !important; font-size: 0.9rem !important; }
     [data-testid="stMetricValue"] { color: #FFFFFF !important; font-size: 1.5rem !important; }
     
-    /* Clean top spacing without hiding the menu button */
-    .block-container { padding-top: 2rem; padding-bottom: 0rem; }
+    /* Layout spacing */
+    .block-container { padding-top: 0rem; padding-bottom: 0rem; }
     
     /* Gray alert for errors/warnings */
     .stAlert { background-color: #2b2e32; color: #E0E0E0; border: 1px solid #444; }
@@ -58,7 +67,7 @@ def load_data():
 df_raw = load_data()
 
 if not df_raw.empty:
-    # Column mapping
+    # Column mapping based on your sample
     year_col = 'year' if 'year' in df_raw.columns else 'iyear'
     lat_col = 'latitude'
     lon_col = 'longitude'
@@ -70,6 +79,7 @@ if not df_raw.empty:
     # --- 3. Sidebar (Filters) ---
     st.sidebar.title("FILTERS")
     
+    # Data Source Filter
     if source_col in df_raw.columns:
         sources = sorted(df_raw[source_col].unique())
         selected_sources = st.sidebar.multiselect("DATA SOURCE", sources, default=sources)
@@ -77,11 +87,13 @@ if not df_raw.empty:
     else:
         df_filtered = df_raw
 
+    # Year Range Filter
     if year_col in df_filtered.columns:
         years = sorted(df_filtered[year_col].dropna().unique().astype(int))
         yr_range = st.sidebar.select_slider("TIME PERIOD", options=years, value=(min(years), max(years)))
         df_filtered = df_filtered[(df_filtered[year_col] >= yr_range[0]) & (df_filtered[year_col] <= yr_range[1])]
 
+    # Country Filter
     if country_col in df_filtered.columns:
         countries = sorted(df_filtered[country_col].dropna().unique())
         sel_countries = st.sidebar.multiselect("COUNTRY", countries)
@@ -89,6 +101,7 @@ if not df_raw.empty:
             df_filtered = df_filtered[df_filtered[country_col].isin(sel_countries)]
 
     # --- 4. Main Display ---
+    # Metrics and Title row
     head_col, m1, m2, m3 = st.columns([2, 1, 1, 1])
     
     with head_col:
@@ -123,7 +136,7 @@ if not df_raw.empty:
         )
         st.plotly_chart(fig_map, use_container_width=True)
 
-    # --- 6. Tabs ---
+    # --- 6. Analytics & Export Tabs ---
     t1, t2 = st.tabs(["STATISTICS", "DATA & EXPORT"])
     
     with t1:
