@@ -10,11 +10,8 @@ st.markdown("""
     .stApp { background-color: #121417; color: #F0F2F6; }
     [data-testid="stSidebar"] { background-color: #1a1d21; border-right: 1px solid #333; }
     
-    /* Elrendezés javítása - padding-bottom hozzáadva a görgethetőségért */
-    .block-container { 
-        padding-top: 0.5rem !important; 
-        padding-bottom: 5rem !important; 
-    } 
+    /* Elrendezés javítása - Feljebb tolás */
+    .block-container { padding-top: 0.5rem !important; padding-bottom: 0rem !important; }
     [data-testid="stVerticalBlock"] > div:first-child { margin-top: -1.5rem !important; }
 
     p, span, label, div, h1, h2, h3, .stMetric label, [data-testid="stMarkdownContainer"] p, 
@@ -77,10 +74,9 @@ st.markdown("""
     .footer-note {
         font-size: 0.75rem;
         color: #888888 !important;
-        margin-top: 30px;
+        margin-top: 20px;
         border-top: 1px solid #333;
         padding-top: 10px;
-        padding-bottom: 20px; /* Extra hely a szöveg alatt */
     }
     header[data-testid="stHeader"] { background-color: rgba(0,0,0,0) !important; }
     </style>
@@ -99,6 +95,7 @@ def load_data():
         if 'adatforras' in df.columns:
             df.rename(columns={'adatforras': 'data_source'}, inplace=True)
         
+        # Actor Type kategorizálás (3. pont)
         def categorize_actor(name):
             name = str(name).strip()
             if name.lower() == 'unknown':
@@ -138,6 +135,7 @@ if not df_raw.empty:
 
         st.markdown("### Filters")
         
+        # Period (Year) Slider - Előre hozva a Filters alá (2. pont)
         if year_col in df_raw.columns:
             years = sorted(df_raw[year_col].dropna().unique().astype(int))
             if years:
@@ -146,18 +144,22 @@ if not df_raw.empty:
         else:
             df_filtered = df_raw.copy()
 
+        # Data Source Filter
         sources = sorted(df_filtered[source_col].unique()) if source_col in df_filtered.columns else []
         selected_sources = st.multiselect("Data Source", sources, default=sources)
         df_filtered = df_filtered[df_filtered[source_col].isin(selected_sources)]
 
+        # Actor Category Filter (3. pont)
         actor_cats = sorted(df_filtered['actor_category'].unique())
         selected_actors = st.multiselect("Actor Type", actor_cats, default=actor_cats)
         df_filtered = df_filtered[df_filtered['actor_category'].isin(selected_actors)]
 
+        # Country Filter
         countries = sorted(df_filtered[country_col].dropna().unique()) if country_col in df_filtered.columns else []
         selected_countries = st.multiselect("Country", countries, default=countries)
         df_filtered = df_filtered[df_filtered[country_col].isin(selected_countries)]
 
+        # Attack Type Filter
         if type_col in df_filtered.columns:
             df_filtered[type_col] = df_filtered[type_col].fillna("N/A")
             types = sorted(df_filtered[type_col].unique())
@@ -261,13 +263,13 @@ if not df_raw.empty:
     else:
         st.warning("No data available for the selected filters.")
 
-    # --- 7. Footer ---
     st.markdown("""
         <div class="footer-note">
-            Data sources:<br>
-            ACLED: C. Raleigh et al. (2010) | GTD: START Consortium (2025)
+            Data sources: <br>
+START - National Consortium for the Study of Terrorism and Responses to Terrorism, Global Terrorism Database, 1970 - 2022, 2025 database, 2025. <br>
+C. Raleigh, A. Linke, H. Hegre, J. Karlsen, Introducing ACLED: An armed conflict location and event dataset, J. Peace Res. 47, 2010.
+
         </div>
-        <div style="height: 50px;"></div> <!-- Extra láthatatlan tér a görgetéshez -->
     """, unsafe_allow_html=True)
 else:
     st.error("Dataset error. Please check your CSV file.")
