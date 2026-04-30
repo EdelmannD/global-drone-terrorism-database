@@ -16,10 +16,10 @@ st.markdown("""
         color: #F0F2F6 !important; 
     } 
 
-    /* Sidebar Citation stílus - Szürke linkkel */
+    /* Sidebar Citation és beviteli mezők egységes sötétszürke stílusa */
     .sidebar-cite {
         font-size: 0.85rem !important;
-        background-color: #262730;
+        background-color: #262730; /* Sötétszürke */
         padding: 10px;
         border-radius: 5px;
         border: 1px solid #4B4B4B;
@@ -27,16 +27,36 @@ st.markdown("""
     }
     .sidebar-cite a { color: #D3D3D3 !important; text-decoration: underline; }
 
-    /* --- UI ELEMEK (CSÚSZKA, MULTISELECT) ÁTSZÍNEZÉSE SZÜRKÉRE --- */
-    /* Slider (csúszka) sín és fogantyú */
-    div[data-baseweb="slider"] > div > div { background-color: #555 !important; }
-    div[role="slider"] { background-color: #FFFFFF !important; border: 2px solid #555 !important; }
+    /* Multiselect háttérszínének egységesítése a cite boxszal */
+    div[data-baseweb="select"] > div {
+        background-color: #262730 !important;
+        border-color: #4B4B4B !important;
+    }
+
+    /* --- SLIDER (CSÚSZKA) ÉS NEON ZÖLD DESIGN --- */
+    /* A csúszka aktív vonala (ami eddig piros volt) */
+    div[data-baseweb="slider"] > div > div > div {
+        background-color: #00FF41 !important; 
+    }
     
-    /* Multiselect kiválasztott elemek színe */
-    span[data-baseweb="tag"] { background-color: #444 !important; color: white !important; }
+    /* A csúszka gombja (fogantyú) */
+    div[role="slider"] {
+        background-color: #00FF41 !important;
+        border: 2px solid #FFFFFF !important;
+    }
+
+    /* A csúszka mozgatásakor megjelenő lebegő évszám buborék */
+    div[data-baseweb="tooltip"] {
+        background-color: #262730 !important;
+        color: white !important;
+        border: 1px solid #4B4B4B !important;
+    }
     
-    /* Checkbox és egyéb aktív elemek (Streamlit primary color felülírása) */
-    .st-at { background-color: #555 !important; }
+    /* Multiselect kiválasztott elemek (tag-ek) színe */
+    span[data-baseweb="tag"] {
+        background-color: #444 !important;
+        color: white !important;
+    }
 
     .main-title {
         font-size: 1.6rem !important;
@@ -159,7 +179,7 @@ if not df_raw.empty:
         df_map, lat=lat_col, lon=lon_col, 
         size=df_map[fatal_col] + 3,
         color='lethality',
-        color_discrete_map={'Fatal Attack': '#FF8C00', 'Non-Fatal': '#00FF41'}, # Visszaállított narancs
+        color_discrete_map={'Fatal Attack': '#FF8C00', 'Non-Fatal': '#00FF41'},
         zoom=1.5, height=520, mapbox_style="carto-darkmatter",
         category_orders={"lethality": ["Fatal Attack", "Non-Fatal"]}
     )
