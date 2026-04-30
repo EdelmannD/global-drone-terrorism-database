@@ -115,8 +115,8 @@ if not df_raw.empty:
     header_col1, header_col2, header_col3, header_col4 = st.columns([2.5, 1, 1, 1])
 
     with header_col1:
-        # Itt a kért 10rem méret, inline HTML-el kényszerítve
-        st.markdown('<h1 style="font-size: 6rem !important; font-weight: bold; color: white; line-height: 0.9; margin: 0; padding: 0;">Global Drone<br>Terrorism Database</h1>', unsafe_allow_html=True)
+        # 5rem méret, inline HTML-el kényszerítve
+        st.markdown('<h1 style="font-size: 5rem !important; font-weight: bold; color: white; line-height: 0.9; margin: 0; padding: 0;">Global Drone<br>Terrorism Database</h1>', unsafe_allow_html=True)
     
     with header_col2:
         st.metric("INCIDENTS", len(df_filtered))
