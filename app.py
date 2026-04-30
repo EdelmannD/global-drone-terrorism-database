@@ -3,24 +3,20 @@ import pandas as pd
 import plotly.express as px
 import io
 
-# --- 1. Konfiguráció és Publikáció-stílusú Design ---
+# --- 1. Konfiguráció és Design ---
 st.set_page_config(
     page_title="GDTD Pro Dashboard", 
     page_icon="🛸", 
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
-# Egyedi CSS: Antracit háttér, neon narancs (GTD) és neon zöld (ACLED) színek
+# Egyedi Neon-Antracit stílus
 st.markdown("""
     <style>
-    /* Fő háttér és szöveg */
     .stApp { background-color: #121417; color: #FFFFFF; }
-    
-    /* Oldalsáv sötétítése */
     [data-testid="stSidebar"] { background-color: #1a1d21; border-right: 1px solid #333; }
     
-    /* Metric (KPI) kártyák: neon narancs alsó csíkkal */
+    /* KPI kártyák neon narancs szegéllyel */
     [data-testid="stMetric"] {
         background-color: #1e2124;
         padding: 20px;
@@ -28,44 +24,23 @@ st.markdown("""
         border-bottom: 4px solid #FF8C00;
         box-shadow: 0px 10px 20px rgba(0,0,0,0.4);
     }
+    [data-testid="stMetricValue"] { color: #FFFFFF !important; }
+    [data-testid="stMetricLabel"] { color: #00FF41 !important; }
     
-    /* Feliratok színei */
-    [data-testid="stMetricValue"] { color: #FFFFFF !important; font-size: 1.8rem !important; }
-    [data-testid="stMetricLabel"] { color: #00FF41 !important; font-weight: bold; }
-    
-    /* Tabok (Fülek) stílusa */
-    .stTabs [data-baseweb="tab-list"] { background-color: transparent; gap: 10px; }
-    .stTabs [data-baseweb="tab"] { 
-        height: 50px; 
-        background-color: #1e2124; 
-        border-radius: 5px 5px 0 0; 
-        color: white;
-    }
-    .stTabs [aria-selected="true"] { border-bottom: 3px solid #00FF41 !important; color: #00FF41 !important; }
-    
-    hr { border: 1px solid #333; }
+    /* Tabok stílusa */
+    .stTabs [aria-selected="true"] { color: #00FF41 !important; border-bottom-color: #00FF41 !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. Robusztus Adatbetöltés ---
+# --- 2. Adatbetöltés ---
 @st.cache_data
 def load_data():
-    # A megadott fájlnév használata
     filename = "Acled_GTD_Drone_Database_20260429.csv"
     try:
-        # Automatikus szeparátor és kódolás kezelése
         df = pd.read_csv(filename, sep=None, engine='python', encoding='utf-8-sig')
-        
-        # Oszlopnevek egységesítése (kisbetű, szóközmentes)
         df.columns = [str(c).strip().lower() for c in df.columns]
-        
-        # GTD specifikus oszlopok átnevezése a könnyebb kezelhetőségért
-        rename_map = {
-            'iyear': 'year',
-            'country_txt': 'country',
-            'nkill': 'fatalities',
-            'gname': 'group_name'
-        }
+        # Alapértelmezett oszlopnevek szinkronizálása
+        rename_map = {'iyear': 'year', 'country_txt': 'country', 'nkill': 'fatalities', 'gname': 'group_name'}
         df = df.rename(columns=rename_map)
         return df
     except Exception as e:
@@ -74,21 +49,19 @@ def load_data():
 
 df_raw = load_data()
 
-# --- 3. Dashboard Logika ---
+# --- 3. Dashboard Funkcionalitás ---
 if not df_raw.empty:
-    # Intelligens oszlopkeresés (ha az átnevezés nem talált volna mindent)
+    # Oszlopok beazonosítása
     year_col = next((c for c in df_raw.columns if 'year' in c), None)
     country_col = next((c for c in df_raw.columns if 'country' in c), None)
     lat_col = next((c for c in df_raw.columns if 'lat' in c), None)
     lon_col = next((c for c in df_raw.columns if 'lon' in c), None)
-    fatal_col = next((c for c in df_raw.columns if any(x in c for x in ['fatal', 'nkill', 'death'])), None)
+    fatal_col = next((c for c in df_raw.columns if any(x in c for x in ['fatal', 'nkill'])), None)
+    source_col = next((c for c in df_raw.columns if any(x in c for x in ['source', 'database'])), None)
     group_col = next((c for c in df_raw.columns if any(x in c for x in ['group', 'actor', 'gname'])), None)
-    source_col = next((c for c in df_raw.columns if any(x in c for x in ['source', 'database', 'event_type'])), None)
 
-    # --- Sidebar Szűrők ---
-    st.sidebar.markdown("## 🛸 SZŰRŐK")
-    
-    # Időszak csúszka
+    # Sidebar szűrők
+    st.sidebar.title("🛸 SZŰRŐK")
     if year_col:
         years = sorted(df_raw[year_col].dropna().unique().astype(int))
         yr_range = st.sidebar.select_slider("IDŐSZAK", options=years, value=(min(years), max(years)))
@@ -96,109 +69,88 @@ if not df_raw.empty:
     else:
         df = df_raw
 
-    # Ország multiselect
     if country_col:
         countries = sorted(df[country_col].dropna().unique())
-        selected = st.sidebar.multiselect("ORSZÁG KIVÁLASZTÁSA", countries)
+        selected = st.sidebar.multiselect("ORSZÁGOK", countries)
         if selected:
             df = df[df[country_col].isin(selected)]
 
-    # --- Főoldal KPI ---
+    # --- Főoldal ---
     st.title("🛸 Global Drone Terrorism Database")
-    st.markdown("---")
     
+    # KPI Szekció
     k1, k2, k3, k4 = st.columns(4)
-    k1.metric("ÖSSZES INCIDENS", f"{len(df)} db")
-    
-    c_count = df[country_col].nunique() if country_col else 0
-    k2.metric("ÉRINTETT ORSZÁGOK", f"{c_count}")
-    
-    f_sum = int(pd.to_numeric(df[fatal_col], errors='coerce').sum()) if fatal_col else 0
-    k3.metric("ÁLDOZATOK SZÁMA", f"{f_sum} fő")
-    
-    max_year = df[year_col].max() if year_col else "N/A"
-    k4.metric("UTOLSÓ ADAT", f"{max_year}")
+    k1.metric("ÖSSZES INCIDENS", len(df))
+    k2.metric("ORSZÁGOK", df[country_col].nunique() if country_col else 0)
+    f_val = int(pd.to_numeric(df[fatal_col], errors='coerce').sum()) if fatal_col else 0
+    k3.metric("ÁLDOZATOK", f_val)
+    k4.metric("UTOLSÓ ÉV", df[year_col].max() if year_col else "N/A")
 
-    # --- Vizualizációs fülek ---
-    tab1, tab2, tab3 = st.tabs(["📊 ANALITIKA", "🗺️ HOTSPOT TÉRKÉP", "📥 EXPORT"])
+    st.markdown("---")
+
+    # --- Térkép és Analitika (Sorrend megfordítva) ---
+    tab1, tab2, tab3 = st.tabs(["🗺️ GLOBÁLIS HOTSPOT TÉRKÉP", "📊 RÉSZLETES ANALITIKA", "📥 ADATOK ÉS EXPORT"])
 
     with tab1:
-        col_a, col_b = st.columns(2)
-        
-        with col_a:
-            st.subheader("IDŐBELI TRENDEK")
-            if year_col:
-                # Publikáció stílus: ha van forrás, bontsuk szét (GTD vs ACLED színekkel)
-                if source_col:
-                    trend = df.groupby([year_col, source_col]).size().reset_index(name='db')
-                    fig_line = px.line(trend, x=year_col, y='db', color=source_col,
-                                       color_discrete_map={'GTD': '#FF8C00', 'ACLED': '#00FF41'})
-                else:
-                    trend = df.groupby(year_col).size().reset_index(name='db')
-                    fig_line = px.area(trend, x=year_col, y='db', color_discrete_sequence=['#00FF41'])
-                
-                fig_line.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-                st.plotly_chart(fig_line, use_container_width=True)
-
-        with col_b:
-            st.subheader("TOP 10 ELKÖVETŐ CSOPORT")
-            if group_col:
-                top10 = df[group_col].value_counts().head(10).reset_index()
-                top10.columns = ['Csoport', 'Események']
-                fig_bar = px.bar(top10, x='Események', y='Csoport', orientation='h',
-                                 color='Események', color_continuous_scale=['#FF8C00', '#00FF41'])
-                fig_bar.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', yaxis={'categoryorder':'total ascending'})
-                st.plotly_chart(fig_bar, use_container_width=True)
-
-    with tab2:
-        st.subheader("GLOBÁLIS INCIDENS TÉRKÉP")
+        st.subheader("Incidensek földrajzi eloszlása")
         if lat_col and lon_col:
-            # Méret az áldozatok szerint, szín a forrás szerint
+            # A körök mérete az áldozatok számától függ, a színe a forrástól (GTD/ACLED)
             fig_map = px.scatter_mapbox(
-                df, lat=lat_col, lon=lon_col, 
-                size=pd.to_numeric(df[fatal_col], errors='coerce').fillna(1) + 1 if fatal_col else None,
+                df, 
+                lat=lat_col, 
+                lon=lon_col, 
+                size=pd.to_numeric(df[fatal_col], errors='coerce').fillna(1) + 2 if fatal_col else None,
                 color=source_col if source_col else None,
                 color_discrete_map={'GTD': '#FF8C00', 'ACLED': '#00FF41'},
                 hover_name=country_col,
-                zoom=1.5, height=700,
+                hover_data=[year_col] if year_col else None,
+                zoom=1.8, 
+                height=750,
                 mapbox_style="carto-darkmatter"
             )
-            fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, paper_bgcolor='rgba(0,0,0,0)')
+            fig_map.update_layout(
+                margin={"r":0,"t":0,"l":0,"b":0},
+                paper_bgcolor='rgba(0,0,0,0)',
+                legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01, font=dict(color="white"))
+            )
             st.plotly_chart(fig_map, use_container_width=True)
         else:
-            st.warning("A koordináták nem találhatók a térkép megjelenítéséhez.")
+            st.error("Koordináta oszlopok nem találhatók a CSV-ben!")
+
+    with tab2:
+        c1, c2 = st.columns(2)
+        with c1:
+            st.subheader("Időbeli lefutás")
+            if year_col:
+                trend = df.groupby(year_col).size().reset_index(name='db')
+                fig_line = px.line(trend, x=year_col, y='db', color_discrete_sequence=['#00FF41'])
+                fig_line.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                st.plotly_chart(fig_line, use_container_width=True)
+
+        with c2:
+            st.subheader("Top 10 Elkövető")
+            if group_col:
+                top_g = df[group_col].value_counts().head(10).reset_index()
+                fig_bar = px.bar(top_g, x='count', y=group_col, orientation='h',
+                                 color='count', color_continuous_scale=['#FF8C00', '#00FF41'])
+                fig_bar.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)')
+                st.plotly_chart(fig_bar, use_container_width=True)
 
     with tab3:
-        st.subheader("ADATOK LETÖLTÉSE")
+        st.subheader("Szűrt adathalmaz")
         st.dataframe(df, use_container_width=True)
         
-        d_col1, d_col2 = st.columns(2)
-        
-        with d_col1:
-            csv_data = df.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📥 Letöltés: CSV",
-                data=csv_data,
-                file_name="gdtd_export.csv",
-                mime="text/csv",
-                use_container_width=True
-            )
-            
-        with d_col2:
+        ex1, ex2 = st.columns(2)
+        with ex1:
+            st.download_button("📥 CSV Letöltése", df.to_csv(index=False).encode('utf-8'), "gdtd_data.csv", "text/csv")
+        with ex2:
             try:
-                buffer = io.BytesIO()
-                with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-                    df.to_excel(writer, index=False, sheet_name='GDTD_Filtered')
-                
-                st.download_button(
-                    label="📊 Letöltés: EXCEL (XLSX)",
-                    data=buffer.getvalue(),
-                    file_name="gdtd_export.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True
-                )
-            except ImportError:
-                st.error("Az Excel letöltéshez telepítsd az 'xlsxwriter' csomagot!")
+                buf = io.BytesIO()
+                with pd.ExcelWriter(buf, engine='xlsxwriter') as wr:
+                    df.to_excel(wr, index=False)
+                st.download_button("📊 Excel Letöltése", buf.getvalue(), "gdtd_data.xlsx")
+            except:
+                st.warning("Excel exportáláshoz 'xlsxwriter' telepítése szükséges.")
 
 else:
-    st.error("A rendszer nem talált adatot. Ellenőrizd a CSV fájl elérhetőségét!")
+    st.error("Nincs megjeleníthető adat. Ellenőrizd a CSV fájlt!")
