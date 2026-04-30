@@ -7,43 +7,45 @@ st.set_page_config(page_title="GDTD Dashboard", layout="wide", initial_sidebar_s
 
 st.markdown("""
     <style>
-    /* Alap háttér és világosabb szövegek */
+    /* Alap háttér és általános világos szövegek */
     .stApp { background-color: #121417; color: #F0F2F6; }
     [data-testid="stSidebar"] { background-color: #1a1d21; border-right: 1px solid #333; }
     
-    /* Világos szürke feliratok a jobb olvashatóságért */
-    p, span, label, .stMetric label { color: #D1D5DB !important; } 
+    /* MINDEN szöveges elem kényszerítése világosra (Sidebar és Main is) */
+    p, span, label, div, h1, h2, h3, .stMetric label, [data-testid="stMarkdownContainer"] p { 
+        color: #F0F2F6 !important; 
+    } 
 
-    /* Cím stílus - Kompakt és fehér */
+    /* Cím stílus - Kompakt és tiszta fehér */
     .main-title {
         font-size: 1.6rem !important;
         font-weight: 800;
         color: #FFFFFF !important;
         line-height: 1.0;
-        margin-top: -10px; /* Feljebb tolás */
+        margin-top: -10px;
         margin-bottom: 0;
     }
 
-    /* Metric kártyák - Kompaktabb méret és feljebb tolás */
+    /* Metric kártyák - Beljebb húzva és sötét háttérrel */
     [data-testid="stMetric"] {
         background-color: #1e2124;
-        padding: 2px 12px;
+        padding: 5px 12px;
         border-radius: 4px;
         border-left: 3px solid #FFFFFF;
         margin-top: -10px;
     }
     
-    /* Metrika értékek (számok) színe */
+    /* Metrika számok színe */
     [data-testid="stMetricValue"] {
         color: #FFFFFF !important;
         font-size: 1.8rem !important;
     }
 
-    /* Térközök csökkentése a fejléc és a térkép között */
+    /* Térközök finomítása */
     .block-container { padding-top: 1rem !important; padding-bottom: 0rem !important; }
     hr { margin-top: 0.5rem !important; margin-bottom: 0.5rem !important; }
 
-    /* Chart konténer a statisztikákhoz */
+    /* Chart konténer a statisztikákhoz (marad fehér a kontraszt miatt) */
     .chart-container {
         background-color: #FFFFFF;
         padding: 15px;
@@ -52,6 +54,9 @@ st.markdown("""
         margin-bottom: 20px;
     }
     
+    /* A statisztikai grafikonok feletti h3-as cím legyen fekete a fehér dobozban, vagy világos kívül */
+    .chart-title { color: #F0F2F6 !important; font-weight: bold; margin-bottom: 10px; }
+
     header[data-testid="stHeader"] { background-color: rgba(0,0,0,0) !important; }
     </style>
     """, unsafe_allow_html=True)
@@ -75,7 +80,6 @@ def load_data():
 df_raw = load_data()
 
 if not df_raw.empty:
-    # Oszlop azonosítás
     lat_col, lon_col = 'latitude', 'longitude'
     year_col, country_col = 'year', 'country_txt'
     fatal_col, source_col = 'nkill', 'data_source'
@@ -93,8 +97,9 @@ if not df_raw.empty:
             yr_range = st.select_slider("Period", options=years, value=(min(years), max(years)))
             df_filtered = df_filtered[(df_filtered[year_col] >= yr_range[0]) & (df_filtered[year_col] <= yr_range[1])]
 
-    # --- 4. Header: Title + 3 Metrics egy sorban ---
-    header_col1, header_col2, header_col3, header_col4 = st.columns([2.5, 1, 1, 1])
+    # --- 4. Header: Title + Metrics szűkített sávban ---
+    # Beiktattunk egy üres oszlopot a végére (index 4), hogy beljebb húzzuk a mezőket a Share gombtól
+    header_col1, header_col2, header_col3, header_col4, spacer = st.columns([2.5, 1, 1, 1, 0.3])
     
     with header_col1:
         st.markdown('<p class="main-title">GLOBAL DRONE<br>TERRORISM DATABASE</p>', unsafe_allow_html=True)
@@ -111,7 +116,7 @@ if not df_raw.empty:
 
     st.markdown("---")
 
-    # --- 5. Main Map (Feltolva a fejléc alá) ---
+    # --- 5. Main Map ---
     df_filtered[lat_col] = pd.to_numeric(df_filtered[lat_col], errors='coerce')
     df_filtered[lon_col] = pd.to_numeric(df_filtered[lon_col], errors='coerce')
     df_map = df_filtered.dropna(subset=[lat_col, lon_col])
@@ -127,7 +132,7 @@ if not df_raw.empty:
     st.plotly_chart(fig_map, use_container_width=True)
 
     # --- 6. Statistics Grid (2x2) ---
-    st.markdown("### STATISTICS")
+    st.markdown('<h3 class="chart-title">STATISTICS</h3>', unsafe_allow_html=True)
 
     def apply_bw_style(fig):
         fig.update_layout(
