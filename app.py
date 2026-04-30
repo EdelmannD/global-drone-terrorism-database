@@ -30,37 +30,35 @@ st.markdown("""
         font-size: 0.85rem !important;
     }
 
-    /* CSÚSZKA STÍLUSA (Piros teljes kiirtása -> Szürke és Neon Kék) */
-    /* A csúszka alapvonala (track) legyen szürke */
+    /* CSÚSZKA STÍLUSA (Türkiz lecserélve FEHÉRRE) */
     div[data-baseweb="slider"] > div > div { background-color: #444444 !important; } 
-    /* Az aktív szakasz és a gomb legyen neon kék */
-    div[data-baseweb="slider"] [role="slider"] { background-color: #00E5FF !important; border: 1px solid #00E5FF !important; }
-    /* A csúszka feletti számérték színe */
-    div[data-testid="stThumbValue"] { color: #00E5FF !important; }
+    div[data-baseweb="slider"] [role="slider"] { background-color: #FFFFFF !important; border: 1px solid #FFFFFF !important; }
+    div[data-testid="stThumbValue"] { color: #FFFFFF !important; }
     
-    /* Multiselect kékítése */
-    span[data-baseweb="tag"] { background-color: #00E5FF !important; color: #000 !important; }
+    /* Multiselect fehérítése */
+    span[data-baseweb="tag"] { background-color: #FFFFFF !important; color: #000 !important; }
 
-    /* FŐCÍM: Nagyobb méret és sortörés */
+    /* FŐCÍM: Még nagyobb méret */
     .main-title {
-        font-size: 1.8rem; /* Nagyobb betűméret */
+        font-size: 2.5rem; /* Megnövelve 1.8-ról */
         font-weight: bold;
         line-height: 1.1;
         color: #FFFFFF;
         margin-top: 5px;
-        margin-bottom: 0px;
+        margin-bottom: 20px;
     }
 
-    /* Metric kártyák finomítása (Kisebb margó a cím mellett) */
+    /* Metric kártyák (Balra igazítva, fehér széllel) */
     [data-testid="stMetric"] {
         background-color: #1e2124;
-        padding: 5px 10px;
+        padding: 10px 15px;
         border-radius: 4px;
-        border-left: 3px solid #00E5FF;
-        margin-left: -20px; /* Közelebb hozza a címhez */
+        border-left: 3px solid #FFFFFF; /* Türkiz helyett Fehér */
+        margin-bottom: 10px;
+        width: 100%;
     }
-    [data-testid="stMetricLabel"] { color: #999999 !important; font-size: 0.75rem !important; }
-    [data-testid="stMetricValue"] { color: #FFFFFF !important; font-size: 1.2rem !important; }
+    [data-testid="stMetricLabel"] { color: #999999 !important; font-size: 0.8rem !important; }
+    [data-testid="stMetricValue"] { color: #FFFFFF !important; font-size: 1.5rem !important; }
 
     header[data-testid="stHeader"] { background-color: rgba(0,0,0,0) !important; }
     .block-container { padding-top: 1.5rem; }
@@ -89,7 +87,6 @@ def load_data():
 df_raw = load_data()
 
 if not df_raw.empty:
-    # Oszlopnevek beállítása
     lat_col, lon_col = 'latitude', 'longitude'
     year_col, country_col = 'year', 'country_txt'
     fatal_col, source_col = 'nkill', 'data_source'
@@ -102,7 +99,7 @@ if not df_raw.empty:
         CITATION<br>
         J. Besenyő, D. Edelmann: Global Drone Terrorism Database (GDTD)<br>
         Source: Figshare database<br>
-        DOI: <a href="https://doi.org/10.6084/m9.figshare.21381312" style="color:#00E5FF; text-decoration:none;">10.6084/m9.figshare.21381312</a><br>
+        DOI: <a href="https://doi.org/10.6084/m9.figshare.21381312" style="color:#FFFFFF; text-decoration:none;">10.6084/m9.figshare.21381312</a><br>
         License: CC-BY 4.0
         </div>
         """, unsafe_allow_html=True)
@@ -123,49 +120,50 @@ if not df_raw.empty:
         if sel_countries:
             df_filtered = df_filtered[df_filtered[country_col].isin(sel_countries)]
 
-    # --- 4. Main Header Row (Nagyobb cím + közelebbi metrikák) ---
-    title_col, m1, m2, m3 = st.columns([2.2, 1, 1, 1])
-    
-    with title_col:
+    # --- 4. Main Layout (Bal oldali sáv metrikákkal + Jobb oldali térkép) ---
+    col_left, col_right = st.columns([1, 4])
+
+    with col_left:
         st.markdown('<p class="main-title">Global Drone<br>Terrorism Database</p>', unsafe_allow_html=True)
-    
-    with m1:
+        
         st.metric("INCIDENTS", len(df_filtered))
-    with m2:
+        
         st.metric("COUNTRIES", df_filtered[country_col].nunique())
-    with m3:
+        
         f_val = pd.to_numeric(df_filtered[fatal_col], errors='coerce').sum()
         st.metric("FATALITIES", int(f_val))
 
-    # --- 5. Map ---
-    df_filtered[lat_col] = pd.to_numeric(df_filtered[lat_col], errors='coerce')
-    df_filtered[lon_col] = pd.to_numeric(df_filtered[lon_col], errors='coerce')
-    df_map = df_filtered.dropna(subset=[lat_col, lon_col])
+    with col_right:
+        # --- 5. Map ---
+        df_filtered[lat_col] = pd.to_numeric(df_filtered[lat_col], errors='coerce')
+        df_filtered[lon_col] = pd.to_numeric(df_filtered[lon_col], errors='coerce')
+        df_map = df_filtered.dropna(subset=[lat_col, lon_col])
 
-    fig_map = px.scatter_mapbox(
-        df_map, lat=lat_col, lon=lon_col, 
-        size=pd.to_numeric(df_map[fatal_col], errors='coerce').fillna(0) + 3,
-        color=source_col,
-        color_discrete_map={'GTD': '#FF8C00', 'ACLED': '#00FF41'},
-        hover_name=country_col,
-        zoom=1.2, height=500, mapbox_style="carto-darkmatter"
-    )
-    fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, paper_bgcolor='rgba(0,0,0,0)', legend=dict(font=dict(color="white")))
-    st.plotly_chart(fig_map, use_container_width=True)
+        fig_map = px.scatter_mapbox(
+            df_map, lat=lat_col, lon=lon_col, 
+            size=pd.to_numeric(df_map[fatal_col], errors='coerce').fillna(0) + 3,
+            color=source_col,
+            color_discrete_map={'GTD': '#FF8C00', 'ACLED': '#00FF41'},
+            hover_name=country_col,
+            zoom=1.2, height=600, mapbox_style="carto-darkmatter"
+        )
+        fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, paper_bgcolor='rgba(0,0,0,0)', legend=dict(font=dict(color="white")))
+        st.plotly_chart(fig_map, use_container_width=True)
 
     # --- 6. Analytics ---
+    st.markdown("---")
     t1, t2 = st.tabs(["STATISTICS", "DATA & EXPORT"])
     with t1:
-        c1, c2, c3 = st.columns(3) # Három oszlopos elrendezés a statisztikáknak
+        c1, c2, c3 = st.columns(3)
         with c1:
             st.subheader("Trend")
             trend = df_filtered.groupby(year_col).size().reset_index(name='count')
-            fig_l = px.line(trend, x=year_col, y='count', template="plotly_dark", color_discrete_sequence=['#00E5FF'])
+            fig_l = px.line(trend, x=year_col, y='count', template="plotly_dark", color_discrete_sequence=['#FFFFFF'])
             st.plotly_chart(fig_l, use_container_width=True)
         with c2:
             st.subheader("Top Groups")
             top_groups = df_filtered[group_col].value_counts().head(10).reset_index()
-            fig_g = px.bar(top_groups, x='count', y=group_col, orientation='h', template="plotly_dark", color_discrete_sequence=['#00E5FF'])
+            fig_g = px.bar(top_groups, x='count', y=group_col, orientation='h', template="plotly_dark", color_discrete_sequence=['#FFFFFF'])
             st.plotly_chart(fig_g, use_container_width=True)
         with c3:
             st.subheader("Attack Types")
