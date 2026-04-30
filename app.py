@@ -230,8 +230,9 @@ if not df_raw.empty:
     # --- 7. Footer Citations ---
     st.markdown("""
         <div class="footer-note">
-            Az ACLED adatok forrása: C. Raleigh, A. Linke, H. Hegre, J. Karlsen, Introducing ACLED: An armed conflict location and event dataset, J. Peace Res. 47 (2010).<br>
-            A GTD adatok forrása: START - National Consortium for the Study of Terrorism and Responses to Terrorism, Global Terrorism Database, 1970 - 2022, 2025 database, 2025.
+            Data sources:<br>
+ACLED: C. Raleigh, A. Linke, H. Hegre, J. Karlsen, Introducing ACLED: An armed conflict location and event dataset, J. Peace Res. 47 (2010).<br>
+GTD: START - National Consortium for the Study of Terrorism and Responses to Terrorism, Global Terrorism Database, 1970 - 2022, 2025 database, 2025.<br>
         </div>
     """, unsafe_allow_html=True)
 
