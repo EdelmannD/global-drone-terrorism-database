@@ -38,16 +38,6 @@ st.markdown("""
     /* Multiselect  */
     span[data-baseweb="tag"] { background-color: #FFFFFF !important; color: #000 !important; }
 
-    /* FŐCÍM: Még nagyobb méret */
-    .main-title {
-        font-size: 10rem; /* Megnövelve 2.5-ről 5-ra */
-        font-weight: bold;
-        line-height: 1.0;
-        color: #FFFFFF;
-        margin-top: 5px;
-        margin-bottom: 0px;
-    }
-
     /* Metric kártyák (Fehér széllel) */
     [data-testid="stMetric"] {
         background-color: #1e2124;
@@ -121,10 +111,12 @@ if not df_raw.empty:
             df_filtered = df_filtered[df_filtered[country_col].isin(sel_countries)]
 
     # --- 4. Main Header (Felirat és Metrikák egymás mellett) ---
-    header_col1, header_col2, header_col3, header_col4 = st.columns([2.5, 1, 1, 1])
+    # Az arányt 5:1:1:1-re állítottam, hogy a hatalmas betűk ne tolják el a többi mezőt
+    header_col1, header_col2, header_col3, header_col4 = st.columns([5, 1, 1, 1])
 
     with header_col1:
-        st.markdown('<p class="main-title">Global Drone<br>Terrorism Database</p>', unsafe_allow_html=True)
+        # Itt a kért 10rem méret, inline HTML-el kényszerítve
+        st.markdown('<h1 style="font-size: 6rem !important; font-weight: bold; color: white; line-height: 0.9; margin: 0; padding: 0;">Global Drone<br>Terrorism Database</h1>', unsafe_allow_html=True)
     
     with header_col2:
         st.metric("INCIDENTS", len(df_filtered))
@@ -138,7 +130,7 @@ if not df_raw.empty:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- 5. Map (Teljes szélességben a metrikák alatt) ---
+    # --- 5. Map ---
     df_filtered[lat_col] = pd.to_numeric(df_filtered[lat_col], errors='coerce')
     df_filtered[lon_col] = pd.to_numeric(df_filtered[lon_col], errors='coerce')
     df_map = df_filtered.dropna(subset=[lat_col, lon_col])
@@ -154,7 +146,7 @@ if not df_raw.empty:
     fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, paper_bgcolor='rgba(0,0,0,0)', legend=dict(font=dict(color="white")))
     st.plotly_chart(fig_map, use_container_width=True)
 
-    # --- 6. Analytics (2x2 elrendezés) ---
+    # --- 6. Analytics ---
     st.markdown("---")
     t1, t2 = st.tabs(["STATISTICS", "DATA & EXPORT"])
     with t1:
