@@ -7,6 +7,7 @@ st.set_page_config(page_title="GDTD Dashboard", layout="wide", initial_sidebar_s
 
 st.markdown("""
     <style>
+    /* Alap háttér és általános világos szövegek */
     .stApp { background-color: #121417; color: #F0F2F6; }
     [data-testid="stSidebar"] { background-color: #1a1d21; border-right: 1px solid #333; }
     
@@ -15,6 +16,7 @@ st.markdown("""
         color: #F0F2F6 !important; 
     } 
 
+    /* Sidebar Citation stílus - Szürke linkkel */
     .sidebar-cite {
         font-size: 0.85rem !important;
         background-color: #262730;
@@ -23,7 +25,18 @@ st.markdown("""
         border: 1px solid #4B4B4B;
         margin-bottom: 20px;
     }
-    .sidebar-cite a { color: #00FF41 !important; text-decoration: none; }
+    .sidebar-cite a { color: #D3D3D3 !important; text-decoration: underline; }
+
+    /* --- UI ELEMEK (CSÚSZKA, MULTISELECT) ÁTSZÍNEZÉSE SZÜRKÉRE --- */
+    /* Slider (csúszka) sín és fogantyú */
+    div[data-baseweb="slider"] > div > div { background-color: #555 !important; }
+    div[role="slider"] { background-color: #FFFFFF !important; border: 2px solid #555 !important; }
+    
+    /* Multiselect kiválasztott elemek színe */
+    span[data-baseweb="tag"] { background-color: #444 !important; color: white !important; }
+    
+    /* Checkbox és egyéb aktív elemek (Streamlit primary color felülírása) */
+    .st-at { background-color: #555 !important; }
 
     .main-title {
         font-size: 1.6rem !important;
@@ -134,21 +147,19 @@ if not df_raw.empty:
 
     st.markdown("---")
 
-    # --- 5. Main Map (Categorized by Lethality) ---
+    # --- 5. Main Map ---
     df_filtered[lat_col] = pd.to_numeric(df_filtered[lat_col], errors='coerce')
     df_filtered[lon_col] = pd.to_numeric(df_filtered[lon_col], errors='coerce')
     df_filtered[fatal_col] = pd.to_numeric(df_filtered[fatal_col], errors='coerce').fillna(0)
     
-    # Új oszlop a kimenetel típusához
     df_filtered['lethality'] = df_filtered[fatal_col].apply(lambda x: "Fatal Attack" if x > 0 else "Non-Fatal")
-    
     df_map = df_filtered.dropna(subset=[lat_col, lon_col])
     
     fig_map = px.scatter_mapbox(
         df_map, lat=lat_col, lon=lon_col, 
         size=df_map[fatal_col] + 3,
         color='lethality',
-        color_discrete_map={'Fatal Attack': '#FF8C00', 'Non-Fatal': '#00FF41'},
+        color_discrete_map={'Fatal Attack': '#FF8C00', 'Non-Fatal': '#00FF41'}, # Visszaállított narancs
         zoom=1.5, height=520, mapbox_style="carto-darkmatter",
         category_orders={"lethality": ["Fatal Attack", "Non-Fatal"]}
     )
