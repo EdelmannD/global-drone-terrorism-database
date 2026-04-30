@@ -97,6 +97,16 @@ def load_data():
         skip = 1 if "sep=" in first_line else 0
         df = pd.read_csv(filename, sep=';', skiprows=skip, engine='python', encoding='utf-8-sig')
         df.columns = df.columns.str.strip().str.lower()
+        
+        # Dátum oszlop létrehozása a year, month, day oszlopokból
+        def create_date(row):
+            try:
+                return f"{int(row['year'])}-{int(row['month']):02d}-{int(row['day']):02d}"
+            except:
+                return str(row['year'])
+        
+        df['formatted_date'] = df.apply(create_date, axis=1)
+
         if 'adatforras' in df.columns:
             df.rename(columns={'adatforras': 'data_source'}, inplace=True)
         
@@ -121,15 +131,12 @@ def load_data():
 df_raw = load_data()
 
 if not df_raw.empty:
-    # Oszlopok beállítása
+    # Oszlop nevek rögzítése
     lat_col, lon_col = 'latitude', 'longitude'
     year_col, country_col = 'year', 'country_txt'
     fatal_col, source_col = 'nkill', 'data_source'
-    group_col, type_col = 'gname', 'attacktype1_txt'
-    
-    # Új oszlopok a térképhez (ellenőrizd, hogy ezek a nevek vannak-e a CSV-ben!)
-    city_col = 'city' if 'city' in df_raw.columns else country_col
-    date_col = 'event_date' if 'event_date' in df_raw.columns else ('date' if 'date' in df_raw.columns else year_col)
+    group_col, type_col = 'attacktype1_txt', 'gname' # Csere a kényelmesebb kezeléshez
+    city_col = 'city'
 
     # --- 3. Sidebar Filters ---
     with st.sidebar:
@@ -164,14 +171,13 @@ if not df_raw.empty:
         selected_countries = st.multiselect("Country", countries, default=countries)
         df_filtered = df_filtered[df_filtered[country_col].isin(selected_countries)]
 
-        if type_col in df_filtered.columns:
-            df_filtered[type_col] = df_filtered[type_col].fillna("N/A")
-            types = sorted(df_filtered[type_col].unique())
-            selected_types = st.multiselect("Attack Type", types, default=types)
-            df_filtered = df_filtered[df_filtered[type_col].isin(selected_types)]
+        # Attack Type filter (attacktype1_txt)
+        attack_types_list = sorted(df_filtered['attacktype1_txt'].fillna("N/A").unique())
+        selected_types = st.multiselect("Attack Type", attack_types_list, default=attack_types_list)
+        df_filtered = df_filtered[df_filtered['attacktype1_txt'].fillna("N/A").isin(selected_types)]
 
     # --- 4. Header ---
-    header_col1, header_col2, header_col3, header_col4, spacer = st.columns([2.5, 1, 1, 1, 0.4])
+    header_col1, header_col2, header_col3, header_col4, _ = st.columns([2.5, 1, 1, 1, 0.4])
     with header_col1:
         st.markdown('<p class="main-title">GLOBAL DRONE<br>TERRORISM DATABASE</p>', unsafe_allow_html=True)
     with header_col2:
@@ -184,7 +190,7 @@ if not df_raw.empty:
 
     st.markdown("<hr style='margin:10px 0px'>", unsafe_allow_html=True)
 
-   # --- 5. Main Map ---
+    # --- 5. Main Map ---
     if not df_filtered.empty:
         df_filtered[lat_col] = pd.to_numeric(df_filtered[lat_col], errors='coerce')
         df_filtered[lon_col] = pd.to_numeric(df_filtered[lon_col], errors='coerce')
@@ -193,7 +199,6 @@ if not df_raw.empty:
         df_filtered['lethality'] = df_filtered[fatal_col].apply(lambda x: "Fatal Attack" if x > 0 else "Non-Fatal")
         df_map = df_filtered.dropna(subset=[lat_col, lon_col])
         
-        # Kiszámoljuk a buborék méretét egy külön változóba, hogy ne zavarja a Plotly-t
         bubble_size = df_map[fatal_col] + 3
 
         fig_map = px.scatter_mapbox(
@@ -207,21 +212,28 @@ if not df_raw.empty:
             height=550, 
             mapbox_style="carto-darkmatter",
             category_orders={"lethality": ["Fatal Attack", "Non-Fatal"]},
-            hover_name=city_col, 
+            hover_name='city', # A város neve jelenik meg felül
             hover_data={
-                lat_col: False, 
-                lon_col: False, 
-                'lethality': True, 
-                fatal_col: True, 
-                group_col: True,
-                # A date_col-t csak akkor adjuk hozzá, ha létezik (a te esetedben a 'year' biztosan az)
-                year_col: True 
+                'formatted_date': True,
+                'attacktype1_txt': True,
+                'gname': True,
+                fatal_col: True,
+                'lethality': False,
+                lat_col: False,
+                lon_col: False,
+                'year': False
             }
         )
         
-        # Ezzel a sorral tüntetjük el a felesleges "size" feliratot a buborékról, 
-        # ha mégis megjelenne a Plotly alapbeállítása miatt
-        fig_map.update_traces(hovertemplate=None) 
+        # Testreszabott buborék feliratok
+        fig_map.update_traces(
+            hovertemplate="<b>%{hovertext}</b><br><br>" +
+                          "Date: %{customdata[0]}<br>" +
+                          "Attack Type: %{customdata[1]}<br>" +
+                          "Group: %{customdata[2]}<br>" +
+                          "Fatalities: %{customdata[3]}<br>" +
+                          "<extra></extra>"
+        )
 
         fig_map.update_layout(
             margin={"r":0,"t":0,"l":0,"b":0}, 
@@ -253,26 +265,28 @@ if not df_raw.empty:
 
         with r1c1:
             st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-            trend = df_filtered.groupby(year_col).size().reset_index(name='count')
-            fig1 = px.line(trend, x=year_col, y='count', title="Trend over Time")
+            trend = df_filtered.groupby('year').size().reset_index(name='count')
+            fig1 = px.line(trend, x='year', y='count', title="Trend over Time")
             fig1.update_traces(line_color='black', line_width=2)
             st.plotly_chart(apply_bw_style(fig1), use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
         with r1c2:
             st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-            top_g = df_filtered[group_col].value_counts().head(8).reset_index()
-            top_g[group_col] = top_g[group_col].astype(str).str.wrap(25).replace('\n', '<br>', regex=True)
-            fig2 = px.bar(top_g, x='count', y=group_col, orientation='h', title="Top Groups")
+            top_g = df_filtered['gname'].value_counts().head(8).reset_index()
+            top_g.columns = ['gname', 'count']
+            top_g['gname'] = top_g['gname'].astype(str).str.wrap(25).replace('\n', '<br>', regex=True)
+            fig2 = px.bar(top_g, x='count', y='gname', orientation='h', title="Top Groups")
             fig2.update_traces(marker_color='black')
             st.plotly_chart(apply_bw_style(fig2), use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
         with r2c1:
             st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-            top_t = df_filtered[type_col].value_counts().head(8).reset_index()
-            top_t[type_col] = top_t[type_col].astype(str).str.wrap(25).replace('\n', '<br>', regex=True)
-            fig3 = px.bar(top_t, x=type_col, y='count', title="Attack Types")
+            top_t = df_filtered['attacktype1_txt'].value_counts().head(8).reset_index()
+            top_t.columns = ['attacktype1_txt', 'count']
+            top_t['attacktype1_txt'] = top_t['attacktype1_txt'].astype(str).str.wrap(25).replace('\n', '<br>', regex=True)
+            fig3 = px.bar(top_t, x='attacktype1_txt', y='count', title="Attack Types")
             fig3.update_traces(marker_color='black')
             st.plotly_chart(apply_bw_style(fig3), use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
@@ -280,6 +294,7 @@ if not df_raw.empty:
         with r2c2:
             st.markdown('<div class="chart-container">', unsafe_allow_html=True)
             src = df_filtered[source_col].value_counts().reset_index()
+            src.columns = [source_col, 'count']
             fig4 = px.pie(src, names=source_col, values='count', title="Data Sources", hole=0.4)
             fig4.update_traces(marker=dict(colors=['black', '#cccccc'], line=dict(color='white', width=1)))
             fig4.update_layout(paper_bgcolor='white', font=dict(family="Arial", color='black'), margin=dict(t=40, b=10))
