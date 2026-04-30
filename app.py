@@ -2,47 +2,48 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# --- 1. Page Config & CSS ---
+# --- 1. Page Config ---
 st.set_page_config(page_title="GDTD Dashboard", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
     <style>
-    /* Alap háttér és szöveg színek */
+    /* Alap háttér és világosabb szövegek */
     .stApp { background-color: #121417; color: #F0F2F6; }
     [data-testid="stSidebar"] { background-color: #1a1d21; border-right: 1px solid #333; }
     
     /* Világos szürke feliratok a jobb olvashatóságért */
     p, span, label, .stMetric label { color: #D1D5DB !important; } 
 
-    /* Főcím - Kompakt és Fehér */
+    /* Cím stílus - Kompakt és fehér */
     .main-title {
-        font-size: 1.5rem !important;
+        font-size: 1.6rem !important;
         font-weight: 800;
         color: #FFFFFF !important;
         line-height: 1.0;
-        margin-top: -15px;
+        margin-top: -10px; /* Feljebb tolás */
+        margin-bottom: 0;
     }
 
-    /* Metric kártyák - Sötét design, jobbra zárt tartalommal */
+    /* Metric kártyák - Kompaktabb méret és feljebb tolás */
     [data-testid="stMetric"] {
         background-color: #1e2124;
-        padding: 5px 12px;
+        padding: 2px 12px;
         border-radius: 4px;
         border-left: 3px solid #FFFFFF;
-        margin-top: -15px;
-        text-align: right;
+        margin-top: -10px;
     }
     
+    /* Metrika értékek (számok) színe */
     [data-testid="stMetricValue"] {
         color: #FFFFFF !important;
-        font-size: 1.6rem !important;
+        font-size: 1.8rem !important;
     }
 
-    /* Térközök minimalizálása */
-    .block-container { padding-top: 1.2rem !important; }
+    /* Térközök csökkentése a fejléc és a térkép között */
+    .block-container { padding-top: 1rem !important; padding-bottom: 0rem !important; }
     hr { margin-top: 0.5rem !important; margin-bottom: 0.5rem !important; }
 
-    /* Fehér statisztikai kártyák lent */
+    /* Chart konténer a statisztikákhoz */
     .chart-container {
         background-color: #FFFFFF;
         padding: 15px;
@@ -74,6 +75,7 @@ def load_data():
 df_raw = load_data()
 
 if not df_raw.empty:
+    # Oszlop azonosítás
     lat_col, lon_col = 'latitude', 'longitude'
     year_col, country_col = 'year', 'country_txt'
     fatal_col, source_col = 'nkill', 'data_source'
@@ -91,22 +93,25 @@ if not df_raw.empty:
             yr_range = st.select_slider("Period", options=years, value=(min(years), max(years)))
             df_filtered = df_filtered[(df_filtered[year_col] >= yr_range[0]) & (df_filtered[year_col] <= yr_range[1])]
 
-    # --- 4. Header (Jobbra igazított metrikákkal a térkép széléhez) ---
-    h_col1, h_col2, h_col3, h_col4 = st.columns([5, 1, 1, 1])
+    # --- 4. Header: Title + 3 Metrics egy sorban ---
+    header_col1, header_col2, header_col3, header_col4 = st.columns([2.5, 1, 1, 1])
     
-    with h_col1:
+    with header_col1:
         st.markdown('<p class="main-title">GLOBAL DRONE<br>TERRORISM DATABASE</p>', unsafe_allow_html=True)
-    with h_col2:
+    
+    with header_col2:
         st.metric("INCIDENTS", len(df_filtered))
-    with h_col3:
+    
+    with header_col3:
         st.metric("COUNTRIES", df_filtered[country_col].nunique())
-    with h_col4:
+    
+    with header_col4:
         f_val = pd.to_numeric(df_filtered[fatal_col], errors='coerce').sum()
         st.metric("FATALITIES", int(f_val if pd.notnull(f_val) else 0))
 
     st.markdown("---")
 
-    # --- 5. Main Map ---
+    # --- 5. Main Map (Feltolva a fejléc alá) ---
     df_filtered[lat_col] = pd.to_numeric(df_filtered[lat_col], errors='coerce')
     df_filtered[lon_col] = pd.to_numeric(df_filtered[lon_col], errors='coerce')
     df_map = df_filtered.dropna(subset=[lat_col, lon_col])
@@ -116,12 +121,12 @@ if not df_raw.empty:
         size=pd.to_numeric(df_map[fatal_col], errors='coerce').fillna(0) + 3,
         color=source_col,
         color_discrete_map={'GTD': '#FF8C00', 'ACLED': '#00FF41'},
-        zoom=1.4, height=530, mapbox_style="carto-darkmatter"
+        zoom=1.5, height=520, mapbox_style="carto-darkmatter"
     )
     fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, paper_bgcolor='rgba(0,0,0,0)')
     st.plotly_chart(fig_map, use_container_width=True)
 
-    # --- 6. Statistics Grid (Fekete-Fehér) ---
+    # --- 6. Statistics Grid (2x2) ---
     st.markdown("### STATISTICS")
 
     def apply_bw_style(fig):
@@ -172,4 +177,4 @@ if not df_raw.empty:
         st.plotly_chart(fig4, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 else:
-    st.error("Adat hiba vagy a fájl nem található.")
+    st.error("Dataset error. Please check your CSV file.")
