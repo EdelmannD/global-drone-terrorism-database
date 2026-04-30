@@ -10,10 +10,10 @@ st.markdown("""
     /* Alap háttér és szöveg */
     .stApp { background-color: #121417; color: #E0E0E0; }
     
-    /* Sidebar tisztítása */
+    /* Sidebar */
     [data-testid="stSidebar"] { background-color: #1a1d21; border-right: 1px solid #333; }
     
-    /* Diszkrét hivatkozás stílusa */
+    /* Hivatkozás stílusa */
     .small-citation {
         font-size: 0.7rem;
         color: #999999;
@@ -30,17 +30,17 @@ st.markdown("""
         font-size: 0.85rem !important;
     }
 
-    /* CSÚSZKA STÍLUSA (Türkiz lecserélve FEHÉRRE) */
+    /* CSÚSZKA STÍLUSA */
     div[data-baseweb="slider"] > div > div { background-color: #444444 !important; } 
     div[data-baseweb="slider"] [role="slider"] { background-color: #FFFFFF !important; border: 1px solid #FFFFFF !important; }
     div[data-testid="stThumbValue"] { color: #FFFFFF !important; }
     
-    /* Multiselect fehérítése */
+    /* Multiselect  */
     span[data-baseweb="tag"] { background-color: #FFFFFF !important; color: #000 !important; }
 
     /* FŐCÍM: Még nagyobb méret */
     .main-title {
-        font-size: 3rem; /* Megnövelve 2.5-ről 3-ra */
+        font-size: 5rem; /* Megnövelve 2.5-ről 5-ra */
         font-weight: bold;
         line-height: 1.0;
         color: #FFFFFF;
