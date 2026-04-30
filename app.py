@@ -94,7 +94,7 @@ if not df_raw.empty:
             df_filtered = df_filtered[(df_filtered[year_col] >= yr_range[0]) & (df_filtered[year_col] <= yr_range[1])]
 
     # --- 4. Header: Title + 3 Metrics egy sorban ---
-    header_col1, header_col2, header_col3, header_col4 = st.columns([2, 1, 1, 1])
+    header_col1, header_col2, header_col3, header_col4 = st.columns([1.8, 1, 1, 1])
     
     with header_col1:
         st.markdown('<p class="main-title">GLOBAL DRONE<br>TERRORISM DATABASE</p>', unsafe_allow_html=True)
