@@ -4,7 +4,6 @@ import plotly.express as px
 import io
 
 # --- 1. Page Config & Professional Dark Theme ---
-# initial_sidebar_state="expanded" ensures the menu is open on start
 st.set_page_config(page_title="GDTD Dashboard", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
@@ -14,6 +13,10 @@ st.markdown("""
     
     /* Sidebar styling */
     [data-testid="stSidebar"] { background-color: #1a1d21; border-right: 1px solid #333; }
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h1, 
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h2 { 
+        color: #FFFFFF !important; /* Brighter FILTERS text */
+    }
     [data-testid="stSidebar"] .stMarkdown p, [data-testid="stSidebar"] label { color: #E0E0E0 !important; }
     
     /* REMOVE WHITE TOP BAR but keep buttons */
@@ -23,26 +26,26 @@ st.markdown("""
     }
     
     /* Sidebar collapse button visibility */
-    [data-testid="stSidebarCollapsedControl"] {
-        color: #FFFFFF !important;
-    }
+    [data-testid="stSidebarCollapsedControl"] { color: #FFFFFF !important; }
 
-    /* Change Red/Accent colors to Gray in Sidebar (Sliders, Checkboxes) */
-    .stSlider [data-baseweb="slider"] [role="presentation"] { background-color: #808080 !important; }
-    .stMultiSelect [data-baseweb="tag"] { background-color: #444 !important; color: #EEE !important; }
+    /* Slider styling: Gray track and handle (removing red/accent) */
+    div[data-baseweb="slider"] > div > div { background-color: #444 !important; } /* track */
+    div[data-baseweb="slider"] [role="slider"] { background-color: #808080 !important; border: 2px solid #808080 !important; } /* handle */
+    div[data-testid="stThumbValue"] { color: #FFFFFF !important; }
 
-    /* Metric Cards - Minimalist */
+    /* Compact Metric Cards */
     [data-testid="stMetric"] {
         background-color: #1e2124;
-        padding: 10px 15px;
+        padding: 5px 12px; /* Shorter padding */
         border-radius: 4px;
-        border-left: 4px solid #808080;
+        border-left: 3px solid #808080;
     }
-    [data-testid="stMetricLabel"] { color: #AAAAAA !important; font-size: 0.9rem !important; }
-    [data-testid="stMetricValue"] { color: #FFFFFF !important; font-size: 1.5rem !important; }
+    [data-testid="stMetricLabel"] { color: #AAAAAA !important; font-size: 0.8rem !important; }
+    [data-testid="stMetricValue"] { color: #FFFFFF !important; font-size: 1.3rem !important; }
     
-    /* Layout spacing */
-    .block-container { padding-top: 0rem; padding-bottom: 0rem; }
+    /* Layout spacing optimization */
+    .block-container { padding-top: 0.5rem; padding-bottom: 0rem; }
+    [data-testid="column"] { padding: 0 5px; } /* Closer metrics */
     
     /* Gray alert for errors/warnings */
     .stAlert { background-color: #2b2e32; color: #E0E0E0; border: 1px solid #444; }
@@ -67,7 +70,7 @@ def load_data():
 df_raw = load_data()
 
 if not df_raw.empty:
-    # Column mapping based on your sample
+    # Column mapping
     year_col = 'year' if 'year' in df_raw.columns else 'iyear'
     lat_col = 'latitude'
     lon_col = 'longitude'
@@ -79,7 +82,6 @@ if not df_raw.empty:
     # --- 3. Sidebar (Filters) ---
     st.sidebar.title("FILTERS")
     
-    # Data Source Filter
     if source_col in df_raw.columns:
         sources = sorted(df_raw[source_col].unique())
         selected_sources = st.sidebar.multiselect("DATA SOURCE", sources, default=sources)
@@ -87,25 +89,22 @@ if not df_raw.empty:
     else:
         df_filtered = df_raw
 
-    # Year Range Filter
     if year_col in df_filtered.columns:
         years = sorted(df_filtered[year_col].dropna().unique().astype(int))
         yr_range = st.sidebar.select_slider("TIME PERIOD", options=years, value=(min(years), max(years)))
         df_filtered = df_filtered[(df_filtered[year_col] >= yr_range[0]) & (df_filtered[year_col] <= yr_range[1])]
 
-    # Country Filter
     if country_col in df_filtered.columns:
         countries = sorted(df_filtered[country_col].dropna().unique())
         sel_countries = st.sidebar.multiselect("COUNTRY", countries)
         if sel_countries:
             df_filtered = df_filtered[df_filtered[country_col].isin(sel_countries)]
 
-    # --- 4. Main Display ---
-    # Metrics and Title row
-    head_col, m1, m2, m3 = st.columns([2, 1, 1, 1])
+    # --- 4. Main Display (Compressed Top Section) ---
+    head_col, m1, m2, m3 = st.columns([2.5, 1, 1, 1])
     
     with head_col:
-        st.subheader("Global Drone Terrorism Database")
+        st.markdown(f"<h3 style='margin-bottom:0;'>Global Drone Terrorism Database</h3>", unsafe_allow_html=True)
     
     with m1:
         st.metric("INCIDENTS", len(df_filtered))
@@ -127,7 +126,7 @@ if not df_raw.empty:
             color=source_col,
             color_discrete_map={'GTD': '#FF8C00', 'ACLED': '#00FF41'},
             hover_name=country_col,
-            zoom=1.4, height=600, mapbox_style="carto-darkmatter"
+            zoom=1.4, height=620, mapbox_style="carto-darkmatter"
         )
         fig_map.update_layout(
             margin={"r":0,"t":0,"l":0,"b":0}, 
