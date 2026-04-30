@@ -15,19 +15,25 @@ st.markdown("""
     [data-testid="stSidebar"] { background-color: #1a1d21; border-right: 1px solid #333; }
     [data-testid="stSidebar"] .stMarkdown p, [data-testid="stSidebar"] label { color: #E0E0E0 !important; }
     
+    /* FIX: Make the sidebar collapse button visible and white */
+    [data-testid="stSidebarCollapsedControl"] {
+        color: #FFFFFF !important;
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 0 5px 5px 0;
+    }
+
     /* Metric Cards - Minimalist */
     [data-testid="stMetric"] {
         background-color: #1e2124;
         padding: 10px 15px;
         border-radius: 4px;
-        border-left: 4px solid #808080; /* Gray instead of orange/red */
+        border-left: 4px solid #808080;
     }
     [data-testid="stMetricLabel"] { color: #AAAAAA !important; font-size: 0.9rem !important; }
     [data-testid="stMetricValue"] { color: #FFFFFF !important; font-size: 1.5rem !important; }
     
-    /* Remove unnecessary spacing at the top */
-    .block-container { padding-top: 1rem; padding-bottom: 0rem; }
-    header { visibility: hidden; }
+    /* Clean top spacing without hiding the menu button */
+    .block-container { padding-top: 2rem; padding-bottom: 0rem; }
     
     /* Gray alert for errors/warnings */
     .stAlert { background-color: #2b2e32; color: #E0E0E0; border: 1px solid #444; }
@@ -64,7 +70,6 @@ if not df_raw.empty:
     # --- 3. Sidebar (Filters) ---
     st.sidebar.title("FILTERS")
     
-    # Data Source Filter
     if source_col in df_raw.columns:
         sources = sorted(df_raw[source_col].unique())
         selected_sources = st.sidebar.multiselect("DATA SOURCE", sources, default=sources)
@@ -72,21 +77,18 @@ if not df_raw.empty:
     else:
         df_filtered = df_raw
 
-    # Year Range Filter
     if year_col in df_filtered.columns:
         years = sorted(df_filtered[year_col].dropna().unique().astype(int))
         yr_range = st.sidebar.select_slider("TIME PERIOD", options=years, value=(min(years), max(years)))
         df_filtered = df_filtered[(df_filtered[year_col] >= yr_range[0]) & (df_filtered[year_col] <= yr_range[1])]
 
-    # Country Filter
     if country_col in df_filtered.columns:
         countries = sorted(df_filtered[country_col].dropna().unique())
         sel_countries = st.sidebar.multiselect("COUNTRY", countries)
         if sel_countries:
             df_filtered = df_filtered[df_filtered[country_col].isin(sel_countries)]
 
-    # --- 4. Main Display (Compressed Layout) ---
-    # Title and Metrics in one row to save space
+    # --- 4. Main Display ---
     head_col, m1, m2, m3 = st.columns([2, 1, 1, 1])
     
     with head_col:
@@ -100,7 +102,7 @@ if not df_raw.empty:
         f_sum = int(pd.to_numeric(df_filtered[fatal_col], errors='coerce').sum()) if fatal_col in df_filtered.columns else 0
         st.metric("FATALITIES", f"{f_sum}")
 
-    # --- 5. Map (Higher Position) ---
+    # --- 5. Map ---
     if lat_col in df_filtered.columns and lon_col in df_filtered.columns:
         df_filtered[lat_col] = pd.to_numeric(df_filtered[lat_col], errors='coerce')
         df_filtered[lon_col] = pd.to_numeric(df_filtered[lon_col], errors='coerce')
@@ -121,7 +123,7 @@ if not df_raw.empty:
         )
         st.plotly_chart(fig_map, use_container_width=True)
 
-    # --- 6. Analytics & Export Tabs ---
+    # --- 6. Tabs ---
     t1, t2 = st.tabs(["STATISTICS", "DATA & EXPORT"])
     
     with t1:
