@@ -91,6 +91,7 @@ if not df_raw.empty:
     year_col, country_col = 'year', 'country_txt'
     fatal_col, source_col = 'nkill', 'data_source'
     group_col, type_col = 'gname', 'attacktype1_txt'
+    target_col = 'targtype1_txt'
 
     # --- 3. Sidebar ---
     with st.sidebar:
@@ -150,25 +151,34 @@ if not df_raw.empty:
         fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, paper_bgcolor='rgba(0,0,0,0)', legend=dict(font=dict(color="white")))
         st.plotly_chart(fig_map, use_container_width=True)
 
-    # --- 6. Analytics ---
+    # --- 6. Analytics (Módosítva 2x2 elrendezésre) ---
     st.markdown("---")
     t1, t2 = st.tabs(["STATISTICS", "DATA & EXPORT"])
     with t1:
-        c1, c2, c3 = st.columns(3)
-        with c1:
+        # Első sor
+        r1c1, r1c2 = st.columns(2)
+        with r1c1:
             st.subheader("Trend")
             trend = df_filtered.groupby(year_col).size().reset_index(name='count')
             fig_l = px.line(trend, x=year_col, y='count', template="plotly_dark", color_discrete_sequence=['#FFFFFF'])
             st.plotly_chart(fig_l, use_container_width=True)
-        with c2:
+        with r1c2:
             st.subheader("Top Groups")
             top_groups = df_filtered[group_col].value_counts().head(10).reset_index()
             fig_g = px.bar(top_groups, x='count', y=group_col, orientation='h', template="plotly_dark", color_discrete_sequence=['#FFFFFF'])
             st.plotly_chart(fig_g, use_container_width=True)
-        with c3:
+
+        # Második sor
+        r2c1, r2c2 = st.columns(2)
+        with r2c1:
             st.subheader("Attack Types")
             fig_p = px.pie(df_filtered, names=type_col, template="plotly_dark", hole=0.4)
             st.plotly_chart(fig_p, use_container_width=True)
+        with r2c2:
+            st.subheader("Target Types")
+            top_targets = df_filtered[target_col].value_counts().head(10).reset_index()
+            fig_t = px.bar(top_targets, x='count', y=target_col, orientation='h', template="plotly_dark", color_discrete_sequence=['#FFFFFF'])
+            st.plotly_chart(fig_t, use_container_width=True)
 
     with t2:
         st.dataframe(df_filtered, use_container_width=True)
