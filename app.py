@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import io
 
 # --- 1. Page Config ---
 st.set_page_config(page_title="GDTD Dashboard", layout="wide", initial_sidebar_state="expanded")
@@ -172,6 +173,31 @@ if not df_raw.empty:
         selected_types = st.multiselect("Attack Type", attack_types_list, default=attack_types_list)
         df_filtered = df_filtered[df_filtered['attacktype1_txt'].fillna("N/A").isin(selected_types)]
 
+        # --- EXPORT SECTION ---
+        st.markdown("---")
+        st.markdown("### Export Filtered Data")
+        
+        # CSV Export
+        csv_data = df_filtered.to_csv(index=False, sep=';', encoding='utf-8-sig')
+        st.download_button(
+            label="Download as CSV",
+            data=csv_data,
+            file_name=f"GDTD_filtered_{pd.Timestamp.now().strftime('%Y%m%d')}.csv",
+            mime="text/csv",
+        )
+
+        # Excel Export
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+            df_filtered.to_excel(writer, index=False, sheet_name='Filtered_Data')
+        
+        st.download_button(
+            label="Download as Excel",
+            data=buffer.getvalue(),
+            file_name=f"GDTD_filtered_{pd.Timestamp.now().strftime('%Y%m%d')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
     # --- 4. Header ---
     header_col1, header_col2, header_col3, header_col4, _ = st.columns([2.5, 1, 1, 1, 0.4])
     with header_col1:
@@ -239,10 +265,8 @@ if not df_raw.empty:
             top_g = df_filtered['gname'].value_counts().head(8).reset_index()
             top_g.columns = ['gname', 'count']
             top_g['gname'] = top_g['gname'].astype(str).str.wrap(25).replace('\n', '<br>', regex=True)
-            # Cím átírva a kérésnek megfelelően
             fig2 = px.bar(top_g, x='count', y='gname', orientation='h', title="Top 8 Most Active Organizations")
             fig2.update_traces(marker_color='black')
-            # Vízszintes diagramnál az X tengely a darabszám
             st.plotly_chart(apply_bw_style(fig2, x_title="Number of Attacks", y_title=""), use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
@@ -251,7 +275,6 @@ if not df_raw.empty:
             top_t = df_filtered['attacktype1_txt'].value_counts().head(8).reset_index()
             top_t.columns = ['attacktype1_txt', 'count']
             top_t['attacktype1_txt'] = top_t['attacktype1_txt'].astype(str).str.wrap(25).replace('\n', '<br>', regex=True)
-            # Hiba javítva: y='count'
             fig3 = px.bar(top_t, x='attacktype1_txt', y='count', title="Attack Types")
             fig3.update_traces(marker_color='black')
             st.plotly_chart(apply_bw_style(fig3, x_title="Attack Type"), use_container_width=True)
