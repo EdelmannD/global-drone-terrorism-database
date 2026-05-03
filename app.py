@@ -236,15 +236,29 @@ if not df_raw.empty:
             st.plotly_chart(apply_bw_style(fig1, y_label="Number of Attacks", x_label="Year"), use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-        with r1c2:
+with r1c2:
             st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+            # Adatok előkészítése: a 8 legaktívabb szervezet
             top_g = df_filtered['gname'].value_counts().head(8).reset_index()
             top_g.columns = ['gname', 'count']
+            
+            # Sortörés kezelése a hosszú nevekhez
             top_g['gname'] = top_g['gname'].astype(str).str.wrap(25).replace('\n', '<br>', regex=True)
-            fig2 = px.bar(top_g, x='count', y='gname', orientation='h', title="Top Groups")
+            
+            # Grafikon létrehozása módosított címmel
+            fig2 = px.bar(
+                top_g, 
+                x='count', 
+                y='gname', 
+                orientation='h', 
+                title="Top 8 Most Active Organizations",
+                labels={'count': 'Number of Attacks', 'gname': ''} # Tengelyfeliratok itt is megadhatók
+            )
+            
             fig2.update_traces(marker_color='black')
-            # Itt az X-tengely a mennyiség, mert vízszintes a chart
-            fig2.update_layout(xaxis_title="Number of Attacks", yaxis_title="")
+            
+            # Stílus alkalmazása a korábban definiált függvénnyel
+            # Mivel vízszintes (h), az x_label lesz a "Number of Attacks"
             st.plotly_chart(apply_bw_style(fig2, x_label="Number of Attacks", y_label=""), use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
