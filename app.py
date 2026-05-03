@@ -26,29 +26,17 @@ st.markdown("""
         color: #F0F2F6 !important; 
     } 
 
-    /* Gombok javítása: Fehér háttér, fekete betű, zöld keret hoverre */
-    div.stButton > button {
-        background-color: #FFFFFF !important;
-        color: #000000 !important;
-        border: 2px solid #FFFFFF !important;
+    /* GOMBOK JAVÍTÁSA: Sötétszürke alap, fehér betű (mint a többi sidebar elem) */
+    div.stButton > button, [data-testid="stBaseButton-secondary"] {
+        background-color: #262730 !important;
+        color: #FFFFFF !important;
+        border: 1px solid #4B4B4B !important;
         width: 100%;
-        font-weight: bold;
+        transition: all 0.3s ease;
     }
     
-    div.stButton > button:hover {
-        border-color: #00FF41 !important;
-        color: #00FF41 !important;
-    }
-
-    /* Download button (st.download_button) speciális kezelése */
-    [data-testid="stBaseButton-secondary"] {
-        background-color: #FFFFFF !important;
-        color: #000000 !important;
-        border: 1px solid #FFFFFF !important;
-        transition: 0.3s;
-    }
-    
-    [data-testid="stBaseButton-secondary"]:hover {
+    /* HOVER ÁLLAPOT: Zöld háttér, fekete betű */
+    div.stButton > button:hover, [data-testid="stBaseButton-secondary"]:hover {
         background-color: #00FF41 !important;
         color: #000000 !important;
         border-color: #00FF41 !important;
