@@ -250,7 +250,7 @@ if not df_raw.empty:
             top_t = df_filtered['attacktype1_txt'].value_counts().head(8).reset_index()
             top_t.columns = ['attacktype1_txt', 'count']
             top_t['attacktype1_txt'] = top_t['attacktype1_txt'].astype(str).str.wrap(25).replace('\n', '<br>', regex=True)
-            fig3 = px.bar(top_t, x='attacktype1_txt', y='gname', title="Attack Types")
+            fig3 = px.bar(top_t, x='attacktype1_txt', y='count', title="Attack Types")
             fig3.update_traces(marker_color='black')
             st.plotly_chart(apply_bw_style(fig3), use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
