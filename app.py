@@ -210,16 +210,16 @@ if not df_raw.empty:
         fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, paper_bgcolor='rgba(0,0,0,0)', legend=dict(title_text="", yanchor="top", y=0.99, xanchor="left", x=0.01, bgcolor="rgba(0,0,0,0.5)", font=dict(color="white")))
         st.plotly_chart(fig_map, use_container_width=True)
 
-        # --- 6. Statistics Grid ---
+# --- 6. Statistics Grid ---
         st.markdown("### STATISTICS")
 
-        def apply_bw_style(fig):
+        def apply_bw_style(fig, y_label="Number of Attacks", x_label=""):
             fig.update_layout(
                 plot_bgcolor='white', paper_bgcolor='white', 
                 font=dict(family="Arial", size=11, color="black"),
                 margin=dict(l=40, r=10, t=40, b=40),
-                xaxis=dict(showgrid=False, linecolor='black', ticks='inside'),
-                yaxis=dict(showgrid=False, linecolor='black', ticks='inside'),
+                xaxis=dict(showgrid=False, linecolor='black', ticks='inside', title=x_label),
+                yaxis=dict(showgrid=False, linecolor='black', ticks='inside', title=y_label),
                 showlegend=False
             )
             return fig
@@ -232,7 +232,8 @@ if not df_raw.empty:
             trend = df_filtered.groupby('year').size().reset_index(name='count')
             fig1 = px.line(trend, x='year', y='count', title="Trend over Time")
             fig1.update_traces(line_color='black', line_width=2)
-            st.plotly_chart(apply_bw_style(fig1), use_container_width=True)
+            # Y-tengely felirat átírva
+            st.plotly_chart(apply_bw_style(fig1, y_label="Number of Attacks", x_label="Year"), use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
         with r1c2:
@@ -242,7 +243,9 @@ if not df_raw.empty:
             top_g['gname'] = top_g['gname'].astype(str).str.wrap(25).replace('\n', '<br>', regex=True)
             fig2 = px.bar(top_g, x='count', y='gname', orientation='h', title="Top Groups")
             fig2.update_traces(marker_color='black')
-            st.plotly_chart(apply_bw_style(fig2), use_container_width=True)
+            # Itt az X-tengely a mennyiség, mert vízszintes a chart
+            fig2.update_layout(xaxis_title="Number of Attacks", yaxis_title="")
+            st.plotly_chart(apply_bw_style(fig2, x_label="Number of Attacks", y_label=""), use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
         with r2c1:
@@ -250,9 +253,11 @@ if not df_raw.empty:
             top_t = df_filtered['attacktype1_txt'].value_counts().head(8).reset_index()
             top_t.columns = ['attacktype1_txt', 'count']
             top_t['attacktype1_txt'] = top_t['attacktype1_txt'].astype(str).str.wrap(25).replace('\n', '<br>', regex=True)
+            
+            # A múltkori hiba javítva (y='count'), és a felirat hozzáadva
             fig3 = px.bar(top_t, x='attacktype1_txt', y='count', title="Attack Types")
             fig3.update_traces(marker_color='black')
-            st.plotly_chart(apply_bw_style(fig3), use_container_width=True)
+            st.plotly_chart(apply_bw_style(fig3, y_label="Number of Attacks", x_label="Attack Type"), use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
         with r2c2:
