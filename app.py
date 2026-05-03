@@ -26,6 +26,34 @@ st.markdown("""
         color: #F0F2F6 !important; 
     } 
 
+    /* Gombok javítása: Fehér háttér, fekete betű, zöld keret hoverre */
+    div.stButton > button {
+        background-color: #FFFFFF !important;
+        color: #000000 !important;
+        border: 2px solid #FFFFFF !important;
+        width: 100%;
+        font-weight: bold;
+    }
+    
+    div.stButton > button:hover {
+        border-color: #00FF41 !important;
+        color: #00FF41 !important;
+    }
+
+    /* Download button (st.download_button) speciális kezelése */
+    [data-testid="stBaseButton-secondary"] {
+        background-color: #FFFFFF !important;
+        color: #000000 !important;
+        border: 1px solid #FFFFFF !important;
+        transition: 0.3s;
+    }
+    
+    [data-testid="stBaseButton-secondary"]:hover {
+        background-color: #00FF41 !important;
+        color: #000000 !important;
+        border-color: #00FF41 !important;
+    }
+
     div[data-baseweb="popover"] * { color: #000000 !important; }
     div[data-baseweb="popover"] { background-color: #ffffff !important; border-radius: 4px; }
     div[role="listbox"] li { background-color: #ffffff !important; color: #000000 !important; }
@@ -177,22 +205,20 @@ if not df_raw.empty:
         st.markdown("---")
         st.markdown("### Export Filtered Data")
         
-        # CSV Export
         csv_data = df_filtered.to_csv(index=False, sep=';', encoding='utf-8-sig')
         st.download_button(
-            label="Download as CSV",
+            label="Download CSV",
             data=csv_data,
             file_name=f"GDTD_filtered_{pd.Timestamp.now().strftime('%Y%m%d')}.csv",
             mime="text/csv",
         )
 
-        # Excel Export
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
             df_filtered.to_excel(writer, index=False, sheet_name='Filtered_Data')
         
         st.download_button(
-            label="Download as Excel",
+            label="Download Excel",
             data=buffer.getvalue(),
             file_name=f"GDTD_filtered_{pd.Timestamp.now().strftime('%Y%m%d')}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
