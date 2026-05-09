@@ -161,19 +161,25 @@ if not df_raw.empty:
 
         st.markdown("### Filters")
         
-        if year_col in df_raw.columns:
-            years = sorted(df_raw[year_col].dropna().unique().astype(int))
+        # MÓDOSÍTOTT SZŰRŐ: manual filter (On/Off)
+        if 'manual' in df_raw.columns:
+            manual_state = st.radio("manual filter", ["on", "off"], index=0, help="On: terrorist attack only | Off: show all")
+            if manual_state == "on":
+                df_temp = df_raw[df_raw['manual'].astype(str).str.lower() == "terrorist attack"].copy()
+            else:
+                df_temp = df_raw.copy()
+        else:
+            df_temp = df_raw.copy()
+
+        if year_col in df_temp.columns:
+            years = sorted(df_temp[year_col].dropna().unique().astype(int))
             if years:
                 yr_range = st.select_slider("Period", options=years, value=(min(years), max(years)))
-                df_filtered = df_raw[(df_raw[year_col] >= yr_range[0]) & (df_raw[year_col] <= yr_range[1])].copy()
+                df_filtered = df_temp[(df_temp[year_col] >= yr_range[0]) & (df_temp[year_col] <= yr_range[1])].copy()
+            else:
+                df_filtered = df_temp.copy()
         else:
-            df_filtered = df_raw.copy()
-
-        # ÚJ SZŰRŐ: Incident Nature (manual oszlop)
-        if 'manual' in df_filtered.columns:
-            m_list = sorted([str(x) for x in df_filtered['manual'].unique() if pd.notnull(x)])
-            selected_manual = st.multiselect("Incident Nature", m_list, default=m_list)
-            df_filtered = df_filtered[df_filtered['manual'].astype(str).isin(selected_manual)]
+            df_filtered = df_temp.copy()
 
         sources = sorted([str(x) for x in df_filtered[source_col].unique() if pd.notnull(x)])
         selected_sources = st.multiselect("Data Source", sources, default=sources)
