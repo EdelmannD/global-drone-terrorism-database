@@ -107,7 +107,7 @@ st.markdown("""
 # --- 2. Data Loading ---
 @st.cache_data
 def load_data():
-    filename = "Acled_GTD_Drone_Database_20260429.csv"
+    filename = "Acled_GTD_Drone_Database_20260509.csv"
     try:
         with open(filename, 'r', encoding='utf-8-sig') as f:
             first_line = f.readline()
@@ -165,6 +165,9 @@ if not df_raw.empty:
 
         st.markdown("### Filters")
         
+        # --- MANUAL FILTER TOGGLE ---
+        manual_filter = st.toggle("Manual Filter (Terrorist Attack Only)", value=False)
+
         if year_col in df_raw.columns:
             years = sorted(df_raw[year_col].dropna().unique().astype(int))
             if years:
@@ -172,6 +175,10 @@ if not df_raw.empty:
                 df_filtered = df_raw[(df_raw[year_col] >= yr_range[0]) & (df_raw[year_col] <= yr_range[1])].copy()
         else:
             df_filtered = df_raw.copy()
+
+        # APPLY MANUAL FILTER LOGIC
+        if manual_filter and 'manual' in df_filtered.columns:
+            df_filtered = df_filtered[df_filtered['manual'] == 'terrorist attack']
 
         sources = sorted(df_filtered[source_col].unique()) if source_col in df_filtered.columns else []
         selected_sources = st.multiselect("Data Source", sources, default=sources)
