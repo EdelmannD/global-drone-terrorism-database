@@ -26,8 +26,8 @@ st.markdown("""
         color: #F0F2F6 !important; 
     } 
 
-    /* GOMBOK: Sötétszürke alap, fehér betű */
-    div.stButton > button, [data-testid="stBaseButton-secondary"], .stDownloadButton button {
+    /* GOMBOK JAVÍTÁSA: Sötétszürke alap, fehér betű (mint a többi sidebar elem) */
+    div.stButton > button, [data-testid="stBaseButton-secondary"] {
         background-color: #262730 !important;
         color: #FFFFFF !important;
         border: 1px solid #4B4B4B !important;
@@ -36,7 +36,7 @@ st.markdown("""
     }
     
     /* HOVER ÁLLAPOT: Zöld háttér, fekete betű */
-    div.stButton > button:hover, [data-testid="stBaseButton-secondary"]:hover, .stDownloadButton button:hover {
+    div.stButton > button:hover, [data-testid="stBaseButton-secondary"]:hover {
         background-color: #00FF41 !important;
         color: #000000 !important;
         border-color: #00FF41 !important;
@@ -107,7 +107,7 @@ st.markdown("""
 # --- 2. Data Loading ---
 @st.cache_data
 def load_data():
-    filename = "Acled_GTD_Drone_Database_20260509.csv"
+    filename = "Acled_GTD_Drone_Database_20260429.csv"
     try:
         with open(filename, 'r', encoding='utf-8-sig') as f:
             first_line = f.readline()
@@ -115,25 +115,16 @@ def load_data():
         df = pd.read_csv(filename, sep=';', skiprows=skip, engine='python', encoding='utf-8-sig')
         df.columns = df.columns.str.strip().str.lower()
         
-        # SZŰRÉS: Csak a "terrorist attack" sorok az új manual oszlop alapján
-        if 'manual' in df.columns:
-            df = df[df['manual'].str.contains('terrorist attack', case=False, na=False)].copy()
-        
         def create_date(row):
             try:
                 return f"{int(row['year'])}-{int(row['month']):02d}-{int(row['day']):02d}"
             except:
-                return str(row.get('year', ''))
+                return str(row['year'])
         
         df['formatted_date'] = df.apply(create_date, axis=1)
 
-        # Forrás oszlop harmonizálása
-        if 'dbsource' in df.columns:
-            df.rename(columns={'dbsource': 'data_source'}, inplace=True)
-        elif 'adatforras' in df.columns:
+        if 'adatforras' in df.columns:
             df.rename(columns={'adatforras': 'data_source'}, inplace=True)
-        else:
-            df['data_source'] = 'Unknown'
         
         def categorize_actor(name):
             name = str(name).strip()
@@ -159,6 +150,7 @@ if not df_raw.empty:
     lat_col, lon_col = 'latitude', 'longitude'
     year_col, country_col = 'year', 'country_txt'
     fatal_col, source_col = 'nkill', 'data_source'
+    city_col = 'city'
 
     # --- 3. Sidebar Filters ---
     with st.sidebar:
@@ -173,7 +165,6 @@ if not df_raw.empty:
 
         st.markdown("### Filters")
         
-        # Időszak szűrő
         if year_col in df_raw.columns:
             years = sorted(df_raw[year_col].dropna().unique().astype(int))
             if years:
@@ -182,29 +173,21 @@ if not df_raw.empty:
         else:
             df_filtered = df_raw.copy()
 
-        # Forrás szűrő (TypeError FIX: stringre konvertálás rendezés előtt)
-        if source_col in df_filtered.columns:
-            sources = sorted(df_filtered[source_col].astype(str).unique())
-            selected_sources = st.multiselect("Data Source", sources, default=sources)
-            df_filtered = df_filtered[df_filtered[source_col].astype(str).isin(selected_sources)]
+        sources = sorted(df_filtered[source_col].unique()) if source_col in df_filtered.columns else []
+        selected_sources = st.multiselect("Data Source", sources, default=sources)
+        df_filtered = df_filtered[df_filtered[source_col].isin(selected_sources)]
 
-        # Actor szűrő
-        actor_cats = sorted(df_filtered['actor_category'].astype(str).unique())
+        actor_cats = sorted(df_filtered['actor_category'].unique())
         selected_actors = st.multiselect("Actor Type", actor_cats, default=actor_cats)
-        df_filtered = df_filtered[df_filtered['actor_category'].astype(str).isin(selected_actors)]
+        df_filtered = df_filtered[df_filtered['actor_category'].isin(selected_actors)]
 
-        # Ország szűrő
-        if country_col in df_filtered.columns:
-            countries = sorted(df_filtered[country_col].dropna().astype(str).unique())
-            selected_countries = st.multiselect("Country", countries, default=countries)
-            df_filtered = df_filtered[df_filtered[country_col].astype(str).isin(selected_countries)]
+        countries = sorted(df_filtered[country_col].dropna().unique()) if country_col in df_filtered.columns else []
+        selected_countries = st.multiselect("Country", countries, default=countries)
+        df_filtered = df_filtered[df_filtered[country_col].isin(selected_countries)]
 
-        # Attack type szűrő
-        attack_types_col = 'attacktype1_txt'
-        if attack_types_col in df_filtered.columns:
-            attack_types_list = sorted(df_filtered[attack_types_col].fillna("N/A").astype(str).unique())
-            selected_types = st.multiselect("Attack Type", attack_types_list, default=attack_types_list)
-            df_filtered = df_filtered[df_filtered[attack_types_col].fillna("N/A").astype(str).isin(selected_types)]
+        attack_types_list = sorted(df_filtered['attacktype1_txt'].fillna("N/A").unique())
+        selected_types = st.multiselect("Attack Type", attack_types_list, default=attack_types_list)
+        df_filtered = df_filtered[df_filtered['attacktype1_txt'].fillna("N/A").isin(selected_types)]
 
         # --- EXPORT SECTION ---
         st.markdown("---")
@@ -219,27 +202,25 @@ if not df_raw.empty:
         )
 
         buffer = io.BytesIO()
-        try:
-            with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-                df_filtered.to_excel(writer, index=False, sheet_name='Filtered_Data')
-            st.download_button(
-                label="Download Excel",
-                data=buffer.getvalue(),
-                file_name=f"GDTD_filtered_{pd.Timestamp.now().strftime('%Y%m%d')}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-        except:
-            pass
+        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+            df_filtered.to_excel(writer, index=False, sheet_name='Filtered_Data')
+        
+        st.download_button(
+            label="Download Excel",
+            data=buffer.getvalue(),
+            file_name=f"GDTD_filtered_{pd.Timestamp.now().strftime('%Y%m%d')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
     # --- 4. Header ---
-    h_col1, h_col2, h_col3, h_col4, _ = st.columns([2.5, 1, 1, 1, 0.4])
-    with h_col1:
+    header_col1, header_col2, header_col3, header_col4, _ = st.columns([2.5, 1, 1, 1, 0.4])
+    with header_col1:
         st.markdown('<p class="main-title">GLOBAL DRONE<br>TERRORISM DATABASE</p>', unsafe_allow_html=True)
-    with h_col2:
+    with header_col2:
         st.metric("INCIDENTS", len(df_filtered))
-    with h_col3:
+    with header_col3:
         st.metric("COUNTRIES", df_filtered[country_col].nunique() if not df_filtered.empty else 0)
-    with h_col4:
+    with header_col4:
         f_val = pd.to_numeric(df_filtered[fatal_col], errors='coerce').sum()
         st.metric("FATALITIES", int(f_val if pd.notnull(f_val) else 0))
 
@@ -260,10 +241,11 @@ if not df_raw.empty:
             color='lethality', color_discrete_map={'Fatal Attack': '#FF8C00', 'Non-Fatal': '#00FF41'},
             zoom=1.5, height=550, mapbox_style="carto-darkmatter",
             category_orders={"lethality": ["Fatal Attack", "Non-Fatal"]},
-            hover_name='city' if 'city' in df_map.columns else None,
-            hover_data={'formatted_date': True, 'gname': True, fatal_col: True, 'lethality': False, lat_col: False, lon_col: False}
+            hover_name='city',
+            hover_data={'formatted_date': True, 'attacktype1_txt': True, 'gname': True, fatal_col: True, 'lethality': False, lat_col: False, lon_col: False, 'year': False}
         )
         
+        fig_map.update_traces(hovertemplate="<b>%{hovertext}</b><br><br>Date: %{customdata[0]}<br>Attack Type: %{customdata[1]}<br>Group: %{customdata[2]}<br>Fatalities: %{customdata[3]}<br><extra></extra>")
         fig_map.update_layout(margin={"r":0,"t":0,"l":0,"b":0}, paper_bgcolor='rgba(0,0,0,0)', legend=dict(title_text="", yanchor="top", y=0.99, xanchor="left", x=0.01, bgcolor="rgba(0,0,0,0.5)", font=dict(color="white")))
         st.plotly_chart(fig_map, use_container_width=True)
 
@@ -275,8 +257,8 @@ if not df_raw.empty:
                 plot_bgcolor='white', paper_bgcolor='white', 
                 font=dict(family="Arial", size=11, color="black"),
                 margin=dict(l=50, r=10, t=40, b=50),
-                xaxis=dict(showgrid=False, linecolor='black', ticks='inside', title=x_title),
-                yaxis=dict(showgrid=False, linecolor='black', ticks='inside', title=y_title),
+                xaxis=dict(showgrid=False, linecolor='black', ticks='inside', title=x_title, title_font=dict(size=12)),
+                yaxis=dict(showgrid=False, linecolor='black', ticks='inside', title=y_title, title_font=dict(size=12)),
                 showlegend=False
             )
             return fig
@@ -294,33 +276,32 @@ if not df_raw.empty:
 
         with r1c2:
             st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-            if 'gname' in df_filtered.columns:
-                top_g = df_filtered['gname'].value_counts().head(8).reset_index()
-                top_g.columns = ['gname', 'count']
-                fig2 = px.bar(top_g, x='count', y='gname', orientation='h', title="Top 8 Most Active Organizations")
-                fig2.update_traces(marker_color='black')
-                st.plotly_chart(apply_bw_style(fig2, x_title="Number of Attacks", y_title=""), use_container_width=True)
+            top_g = df_filtered['gname'].value_counts().head(8).reset_index()
+            top_g.columns = ['gname', 'count']
+            top_g['gname'] = top_g['gname'].astype(str).str.wrap(25).replace('\n', '<br>', regex=True)
+            fig2 = px.bar(top_g, x='count', y='gname', orientation='h', title="Top 8 Most Active Organizations")
+            fig2.update_traces(marker_color='black')
+            st.plotly_chart(apply_bw_style(fig2, x_title="Number of Attacks", y_title=""), use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
         with r2c1:
             st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-            if 'attacktype1_txt' in df_filtered.columns:
-                top_t = df_filtered['attacktype1_txt'].value_counts().head(8).reset_index()
-                top_t.columns = ['attacktype1_txt', 'count']
-                fig3 = px.bar(top_t, x='attacktype1_txt', y='count', title="Attack Types")
-                fig3.update_traces(marker_color='black')
-                st.plotly_chart(apply_bw_style(fig3, x_title="Attack Type"), use_container_width=True)
+            top_t = df_filtered['attacktype1_txt'].value_counts().head(8).reset_index()
+            top_t.columns = ['attacktype1_txt', 'count']
+            top_t['attacktype1_txt'] = top_t['attacktype1_txt'].astype(str).str.wrap(25).replace('\n', '<br>', regex=True)
+            fig3 = px.bar(top_t, x='attacktype1_txt', y='count', title="Attack Types")
+            fig3.update_traces(marker_color='black')
+            st.plotly_chart(apply_bw_style(fig3, x_title="Attack Type"), use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
         with r2c2:
             st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-            if source_col in df_filtered.columns:
-                src = df_filtered[source_col].value_counts().reset_index()
-                src.columns = [source_col, 'count']
-                fig4 = px.pie(src, names=source_col, values='count', title="Data Sources", hole=0.4)
-                fig4.update_traces(marker=dict(colors=['black', '#cccccc'], line=dict(color='white', width=1)))
-                fig4.update_layout(paper_bgcolor='white', font=dict(family="Arial", color='black'), margin=dict(t=40, b=10))
-                st.plotly_chart(fig4, use_container_width=True)
+            src = df_filtered[source_col].value_counts().reset_index()
+            src.columns = [source_col, 'count']
+            fig4 = px.pie(src, names=source_col, values='count', title="Data Sources", hole=0.4)
+            fig4.update_traces(marker=dict(colors=['black', '#cccccc'], line=dict(color='white', width=1)))
+            fig4.update_layout(paper_bgcolor='white', font=dict(family="Arial", color='black'), margin=dict(t=40, b=10))
+            st.plotly_chart(fig4, use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
     else:
         st.warning("No data available.")
