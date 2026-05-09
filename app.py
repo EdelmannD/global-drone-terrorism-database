@@ -6,7 +6,7 @@ import io
 # --- 1. Page Config ---
 st.set_page_config(page_title="GDTD Dashboard", layout="wide", initial_sidebar_state="expanded")
 
-# Agresszív CSS a Streamlit gyári piros/kék színeinek felülírására
+# Agresszív CSS a gombok és az elrendezés javítására
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -16,42 +16,38 @@ st.markdown("""
     .stApp { background-color: #121417; color: #F0F2F6; }
     [data-testid="stSidebar"] { background-color: #1a1d21; border-right: 1px solid #333; }
     
-    /* FELSŐ HELY MEGTAKARÍTÁSA */
+    /* Elrendezés: Feljebb kezdődjön a tartalom */
     .block-container { 
         padding-top: 1rem !important; 
         padding-bottom: 2rem !important; 
     } 
+    [data-testid="stVerticalBlock"] > div:first-child { margin-top: 0rem !important; }
 
-    /* GOMBOK ÉS ELEMENTEK SZÍNEZÉSE - MINDENRE KITERJEDŐEN */
-    div.stButton > button, 
-    div.stDownloadButton > button, 
-    button[kind="secondary"],
-    [data-testid="stBaseButton-secondary"],
-    [data-testid="stBaseButton-primary"] {
+    /* GOMBOK SZÍNE: Sötétszürke -> Zöld hover */
+    /* Targetálunk minden lehetséges Streamlit gomb típust */
+    button, [data-testid="stBaseButton-secondary"], [data-testid="stBaseButton-primary"], .stDownloadButton button {
         background-color: #262730 !important;
         color: #FFFFFF !important;
         border: 1px solid #4B4B4B !important;
         width: 100%;
-        transition: all 0.3s ease;
+        border-radius: 4px !important;
+        transition: all 0.3s ease !important;
     }
     
-    div.stButton > button:hover, 
-    div.stDownloadButton > button:hover,
-    [data-testid="stBaseButton-secondary"]:hover,
-    [data-testid="stBaseButton-primary"]:hover {
+    button:hover, [data-testid="stBaseButton-secondary"]:hover, [data-testid="stBaseButton-primary"]:hover, .stDownloadButton button:hover {
         background-color: #00FF41 !important;
         color: #000000 !important;
         border-color: #00FF41 !important;
     }
 
-    /* INPUTOK ÉS SZŰRŐK SZÍNEI */
-    div[data-baseweb="select"] > div { background-color: #262730 !important; border-color: #4B4B4B !important; }
-    div[data-baseweb="popover"] * { color: #000000 !important; }
-    
-    /* Feliratok színe */
-    p, span, label, div, h1, h2, h3, .stMetric label, [data-testid="stMarkdownContainer"] p { 
+    /* Feliratok és inputok színe */
+    p, span, label, div, h1, h2, h3, .stMetric label, [data-testid="stMarkdownContainer"] p, 
+    .stMultiSelect label, .stSlider label, .stToggle label p { 
         color: #F0F2F6 !important; 
     } 
+
+    div[data-baseweb="select"] > div { background-color: #262730 !important; border-color: #4B4B4B !important; }
+    div[data-baseweb="popover"] * { color: #000000 !important; }
 
     .sidebar-cite {
         font-size: 0.85rem !important;
@@ -76,6 +72,8 @@ st.markdown("""
         border-radius: 4px;
         border-left: 3px solid #FFFFFF;
     }
+    
+    [data-testid="stMetricValue"] { color: #FFFFFF !important; font-size: 1.8rem !important; }
 
     .chart-container {
         background-color: #FFFFFF;
@@ -92,9 +90,9 @@ st.markdown("""
         border-top: 1px solid #333;
         padding-top: 10px;
     }
-    
-    /* Teszt sor */
-    .debug-info { font-size: 0.65rem; color: #444 !important; }
+
+    /* DEBUG felirat stílusa */
+    .debug-text { font-size: 0.65rem; color: #444 !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -103,14 +101,15 @@ st.markdown("""
 def load_data():
     filename = "Acled_GTD_Drone_Database_20260509.csv"
     try:
-        # Beolvasás: sep=; sor átugrása ha van, oszlopnevek tisztítása
+        # Beolvasás pontosvesszővel, sep=; sor kezelése
         df = pd.read_csv(filename, sep=';', skiprows=0, engine='python', encoding='utf-8-sig')
         if "sep=" in str(df.columns[0]):
             df = pd.read_csv(filename, sep=';', skiprows=1, engine='python', encoding='utf-8-sig')
         
+        # Oszlopnevek tisztítása (kisbetű, szóközmentes)
         df.columns = df.columns.str.strip().str.lower()
         
-        # Dátum generálás
+        # Dátum készítése
         def create_date(row):
             try: return f"{int(row['year'])}-{int(row['month']):02d}-{int(row['day']):02d}"
             except: return str(row.get('year', ''))
@@ -121,6 +120,8 @@ def load_data():
             df.rename(columns={'adatforras': 'data_source'}, inplace=True)
         elif 'dbsource' in df.columns:
             df.rename(columns={'dbsource': 'data_source'}, inplace=True)
+        else:
+            df['data_source'] = "Unknown"
 
         return df
     except Exception as e:
@@ -131,8 +132,8 @@ df_raw = load_data()
 if not df_raw.empty:
     # --- 3. Sidebar Filters ---
     with st.sidebar:
-        # TESZT SZÁMLÁLÓ (Később eltávolítható)
-        st.markdown(f'<div class="debug-info">DEBUG: Total records in CSV: {len(df_raw)}</div>', unsafe_allow_html=True)
+        # PONT 3: Teszt számláló
+        st.markdown(f'<div class="debug-text">DEBUG: Total rows read from CSV: {len(df_raw)}</div>', unsafe_allow_html=True)
 
         st.markdown("""
         <div class="sidebar-cite">
@@ -144,41 +145,35 @@ if not df_raw.empty:
 
         st.markdown("### Filters")
         
-        # 1. PONT: MANUAL FILTER TOGGLE
-        manual_on = st.toggle("Manual Filter: Terrorist Attacks Only", value=False)
-        if manual_on and 'manual' in df_raw.columns:
-            df_filtered = df_raw[df_raw['manual'] == "terrorist attack"].copy()
+        # PONT 1: MANUAL FILTER
+        manual_active = st.toggle("Terrorist Attacks Only (Manual Filter)", value=False)
+        if manual_active and 'manual' in df_raw.columns:
+            df_filtered = df_raw[df_raw['manual'].str.contains("terrorist attack", case=False, na=False)].copy()
         else:
             df_filtered = df_raw.copy()
 
-        # ÉV SZŰRŐ
+        # Év szűrő
         if 'year' in df_filtered.columns:
             years = sorted(df_filtered['year'].dropna().unique().astype(int))
             yr_range = st.select_slider("Period", options=years, value=(min(years), max(years)))
             df_filtered = df_filtered[(df_filtered['year'] >= yr_range[0]) & (df_filtered['year'] <= yr_range[1])]
 
-        # ADATFORRÁS SZŰRŐ
+        # Forrás szűrő
         if 'data_source' in df_filtered.columns:
-            srcs = sorted(df_filtered['data_source'].unique())
+            srcs = sorted(df_filtered['data_source'].dropna().unique())
             sel_srcs = st.multiselect("Data Source", srcs, default=srcs)
             df_filtered = df_filtered[df_filtered['data_source'].isin(sel_srcs)]
 
-        # ORSZÁG SZŰRŐ
+        # Ország szűrő
         if 'country_txt' in df_filtered.columns:
             cntrs = sorted(df_filtered['country_txt'].dropna().unique())
             sel_cntrs = st.multiselect("Country", cntrs, default=cntrs)
             df_filtered = df_filtered[df_filtered['country_txt'].isin(sel_cntrs)]
 
-        # TÁMADÁS TÍPUSA
-        if 'attacktype1_txt' in df_filtered.columns:
-            atks = sorted(df_filtered['attacktype1_txt'].dropna().unique())
-            sel_atks = st.multiselect("Attack Type", atks, default=atks)
-            df_filtered = df_filtered[df_filtered['attacktype1_txt'].isin(sel_atks)]
-
         st.markdown("---")
         st.markdown("### Export")
-        csv_data = df_filtered.to_csv(index=False, sep=';', encoding='utf-8-sig')
-        st.download_button("Download CSV", csv_data, "GDTD_filtered.csv", "text/csv")
+        csv_exp = df_filtered.to_csv(index=False, sep=';', encoding='utf-8-sig')
+        st.download_button("Download CSV", csv_exp, "GDTD_filtered.csv", "text/csv")
 
     # --- 4. Header & Metrics ---
     h1, h2, h3, h4 = st.columns([2.5, 1, 1, 1])
@@ -186,25 +181,23 @@ if not df_raw.empty:
     with h2: st.metric("INCIDENTS", len(df_filtered))
     with h3: st.metric("COUNTRIES", df_filtered['country_txt'].nunique() if 'country_txt' in df_filtered.columns else 0)
     with h4:
-        # Biztonságos összegzés a hibák elkerülésére
-        if 'nkill' in df_filtered.columns:
-            f_val = pd.to_numeric(df_filtered['nkill'], errors='coerce').sum()
-            st.metric("FATALITIES", int(f_val if pd.notnull(f_val) else 0))
-        else:
-            st.metric("FATALITIES", 0)
+        kills = pd.to_numeric(df_filtered['nkill'], errors='coerce').sum() if 'nkill' in df_filtered.columns else 0
+        st.metric("FATALITIES", int(kills if pd.notnull(kills) else 0))
 
     st.markdown("<hr style='margin:10px 0px'>", unsafe_allow_html=True)
 
-    # --- 5. Map ---
+    # --- 5. Main Map ---
     if not df_filtered.empty:
         df_filtered['latitude'] = pd.to_numeric(df_filtered['latitude'], errors='coerce')
         df_filtered['longitude'] = pd.to_numeric(df_filtered['longitude'], errors='coerce')
         df_map = df_filtered.dropna(subset=['latitude', 'longitude'])
         
-        # Színkódolás a halálos kimenetel alapján
         df_map['lethality'] = pd.to_numeric(df_map['nkill'], errors='coerce').fillna(0).apply(lambda x: "Fatal Attack" if x > 0 else "Non-Fatal")
 
         fig_map = px.scatter_mapbox(
             df_map, lat='latitude', lon='longitude', 
             size=pd.to_numeric(df_map['nkill'], errors='coerce').fillna(0) + 3,
-            color='lethality', color_discrete_map={'Fatal Attack': '#FF8C00', 'Non-Fatal':
+            color='lethality', color_discrete_map={'Fatal Attack': '#FF8C00', 'Non-Fatal': '#00FF41'},
+            zoom=1.5, height=500, mapbox_style="carto-darkmatter",
+            hover_name='city',
+            hover_data={'formatted_date': True,
