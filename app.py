@@ -137,9 +137,7 @@ def load_data():
             df['actor_category'] = 'Unknown'
             
         return df
-
-    except Exception as e:
-        st.error(f"Részletes hiba: {e}")
+    except:
         return pd.DataFrame()
 
 df_raw = load_data()
