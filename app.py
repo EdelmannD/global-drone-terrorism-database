@@ -25,7 +25,6 @@ st.markdown("""
         color: #F0F2F6 !important; 
     } 
 
-    /* Gombok stílusa */
     div.stButton > button, [data-testid="stBaseButton-secondary"] {
         background-color: #262730 !important;
         color: #FFFFFF !important;
@@ -88,20 +87,16 @@ st.markdown("""
 def load_data():
     filename = "Acled_GTD_Drone_Database_20260509.csv"
     try:
-        # Ellenőrizzük, hogy a fájl a "sep=;" sorral kezdődik-e
+        # Ellenőrizzük a "sep=;" jelzést az első sorban
         with open(filename, 'r', encoding='utf-8-sig') as f:
             first_line = f.readline()
         
-        # Ha benne van a sep=; jelzés, átugorjuk az első sort (skiprows=1)
         skip = 1 if "sep=" in first_line else 0
         
-        # Beolvasás pontosvessző elválasztóval
+        # Beolvasás pontosvesszővel
         df = pd.read_csv(filename, sep=';', skiprows=skip, engine='python', encoding='utf-8-sig')
-        
-        # Oszlopnevek egységesítése (kisbetű, szóközmentes)
         df.columns = df.columns.str.strip().str.lower()
         
-        # Dátum oszlop létrehozása a térképes hoverhez
         def create_date(row):
             try:
                 return f"{int(row['year'])}-{int(row['month']):02d}-{int(row['day']):02d}"
@@ -110,11 +105,9 @@ def load_data():
         
         df['formatted_date'] = df.apply(create_date, axis=1)
 
-        # Forrás oszlop elnevezése (ha dbsource néven van a CSV-ben)
         if 'dbsource' in df.columns:
             df.rename(columns={'dbsource': 'data_source'}, inplace=True)
         
-        # Actor kategória meghatározása
         def categorize_actor(name):
             name = str(name).strip()
             if name.lower() == 'unknown': return 'Unknown'
@@ -129,8 +122,7 @@ def load_data():
             
         return df
     except Exception as e:
-        # Hiba esetén kiírjuk a technikai részleteket a sidebarba a javításhoz
-        st.sidebar.error(f"Hiba a CSV beolvasásakor: {e}")
+        st.sidebar.error(f"Data load error: {e}")
         return pd.DataFrame()
 
 df_raw = load_data()
@@ -149,11 +141,4 @@ if not df_raw.empty:
 
         st.markdown("### Filters")
         
-        # --- MANUAL SZŰRŐ ---
         manual_filter = st.toggle("Manual Filter (Terrorist Attack Only)", value=False)
-
-        # Év szűrő
-        if 'year' in df_raw.columns:
-            years = sorted(df_raw['year'].dropna().unique().astype(int))
-            yr_range = st.select_slider("Period", options=years, value=(min(years), max(years)))
-            df_filtered = df_raw[(df_raw['year'] >= yr_range
