@@ -6,7 +6,6 @@ import io
 # --- 1. Page Config ---
 st.set_page_config(page_title="GDTD Dashboard", layout="wide", initial_sidebar_state="expanded")
 
-# Agresszív CSS a gombok és az elrendezés javítására
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -16,38 +15,35 @@ st.markdown("""
     .stApp { background-color: #121417; color: #F0F2F6; }
     [data-testid="stSidebar"] { background-color: #1a1d21; border-right: 1px solid #333; }
     
-    /* Elrendezés: Feljebb kezdődjön a tartalom */
     .block-container { 
-        padding-top: 1rem !important; 
+        padding-top: 1.8rem !important; 
         padding-bottom: 2rem !important; 
     } 
     [data-testid="stVerticalBlock"] > div:first-child { margin-top: 0rem !important; }
 
-    /* GOMBOK SZÍNE: Sötétszürke -> Zöld hover */
-    /* Targetálunk minden lehetséges Streamlit gomb típust */
-    button, [data-testid="stBaseButton-secondary"], [data-testid="stBaseButton-primary"], .stDownloadButton button {
+    p, span, label, div, h1, h2, h3, .stMetric label, [data-testid="stMarkdownContainer"] p, 
+    .stMultiSelect label, .stSlider label { 
+        color: #F0F2F6 !important; 
+    } 
+
+    div.stButton > button, [data-testid="stBaseButton-secondary"] {
         background-color: #262730 !important;
         color: #FFFFFF !important;
         border: 1px solid #4B4B4B !important;
         width: 100%;
-        border-radius: 4px !important;
-        transition: all 0.3s ease !important;
+        transition: all 0.3s ease;
     }
     
-    button:hover, [data-testid="stBaseButton-secondary"]:hover, [data-testid="stBaseButton-primary"]:hover, .stDownloadButton button:hover {
+    div.stButton > button:hover, [data-testid="stBaseButton-secondary"]:hover {
         background-color: #00FF41 !important;
         color: #000000 !important;
         border-color: #00FF41 !important;
     }
 
-    /* Feliratok és inputok színe */
-    p, span, label, div, h1, h2, h3, .stMetric label, [data-testid="stMarkdownContainer"] p, 
-    .stMultiSelect label, .stSlider label, .stToggle label p { 
-        color: #F0F2F6 !important; 
-    } 
-
-    div[data-baseweb="select"] > div { background-color: #262730 !important; border-color: #4B4B4B !important; }
     div[data-baseweb="popover"] * { color: #000000 !important; }
+    div[data-baseweb="popover"] { background-color: #ffffff !important; border-radius: 4px; }
+    div[role="listbox"] li { background-color: #ffffff !important; color: #000000 !important; }
+    div[role="listbox"] li:hover { background-color: #eeeeee !important; }
 
     .sidebar-cite {
         font-size: 0.85rem !important;
@@ -57,13 +53,25 @@ st.markdown("""
         border: 1px solid #4B4B4B;
         margin-bottom: 20px;
     }
+    .sidebar-cite a { color: #D3D3D3 !important; text-decoration: underline; }
+
+    div[data-baseweb="select"] > div {
+        background-color: #262730 !important;
+        border-color: #4B4B4B !important;
+    }
+
+    div[data-baseweb="slider"] > div > div > div { background-color: #00FF41 !important; }
+    div[role="slider"] { background-color: #00FF41 !important; border: 2px solid #FFFFFF !important; }
+    
+    span[data-baseweb="tag"] { background-color: #444 !important; color: white !important; }
 
     .main-title {
         font-size: 1.6rem !important;
         font-weight: 800;
         color: #FFFFFF !important;
         line-height: 1.0;
-        margin: 0;
+        margin-top: 0px;
+        margin-bottom: 0;
     }
 
     [data-testid="stMetric"] {
@@ -89,10 +97,8 @@ st.markdown("""
         margin-top: 20px;
         border-top: 1px solid #333;
         padding-top: 10px;
+        padding-bottom: 10px;
     }
-
-    /* DEBUG felirat stílusa */
-    .debug-text { font-size: 0.65rem; color: #444 !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -101,103 +107,116 @@ st.markdown("""
 def load_data():
     filename = "Acled_GTD_Drone_Database_20260509.csv"
     try:
-        # Beolvasás pontosvesszővel, sep=; sor kezelése
-        df = pd.read_csv(filename, sep=';', skiprows=0, engine='python', encoding='utf-8-sig')
-        if "sep=" in str(df.columns[0]):
-            df = pd.read_csv(filename, sep=';', skiprows=1, engine='python', encoding='utf-8-sig')
-        
-        # Oszlopnevek tisztítása (kisbetű, szóközmentes)
+        with open(filename, 'r', encoding='utf-8-sig') as f:
+            first_line = f.readline()
+        skip = 1 if "sep=" in first_line else 0
+        df = pd.read_csv(filename, sep=';', skiprows=skip, engine='python', encoding='utf-8-sig')
         df.columns = df.columns.str.strip().str.lower()
         
-        # Dátum készítése
+        # SZŰRÉS: Csak a "terrorist attack" sorok megtartása az új manual oszlop alapján
+        if 'manual' in df.columns:
+            df = df[df['manual'] == 'terrorist attack'].copy()
+        
         def create_date(row):
-            try: return f"{int(row['year'])}-{int(row['month']):02d}-{int(row['day']):02d}"
-            except: return str(row.get('year', ''))
+            try:
+                return f"{int(row['year'])}-{int(row['month']):02d}-{int(row['day']):02d}"
+            except:
+                return str(row.get('year', ''))
+        
         df['formatted_date'] = df.apply(create_date, axis=1)
 
-        # Forrás oszlop elnevezése
+        # Forrás oszlop harmonizálása
         if 'adatforras' in df.columns:
             df.rename(columns={'adatforras': 'data_source'}, inplace=True)
         elif 'dbsource' in df.columns:
             df.rename(columns={'dbsource': 'data_source'}, inplace=True)
+        
+        def categorize_actor(name):
+            name = str(name).strip()
+            if name.lower() == 'unknown':
+                return 'Unknown'
+            elif name.lower().startswith('unidentified'):
+                return 'Unidentified'
+            else:
+                return 'Terrorist Organization'
+        
+        if 'gname' in df.columns:
+            df['actor_category'] = df['gname'].apply(categorize_actor)
         else:
-            df['data_source'] = "Unknown"
-
+            df['actor_category'] = 'Unknown'
+            
         return df
     except Exception as e:
+        # st.error(f"Hiba: {e}") # Debughoz visszakapcsolható
         return pd.DataFrame()
 
 df_raw = load_data()
 
 if not df_raw.empty:
+    lat_col, lon_col = 'latitude', 'longitude'
+    year_col, country_col = 'year', 'country_txt'
+    fatal_col, source_col = 'nkill', 'data_source'
+    city_col = 'city'
+
     # --- 3. Sidebar Filters ---
     with st.sidebar:
-        # PONT 3: Teszt számláló
-        st.markdown(f'<div class="debug-text">DEBUG: Total rows read from CSV: {len(df_raw)}</div>', unsafe_allow_html=True)
-
-        st.markdown("""
+        st.markdown(f"""
         <div class="sidebar-cite">
         <b>Cite as:</b><br>
         Besenyő, J.; Edelmann, D. (2026): Global Drone Terrorism Database (GDTD). Figshare. <br>
-        <a href="https://doi.org/10.6084/m9.figshare.32128399" target="_blank">DOI: 10.6084/m9.figshare.32128399</a>
+        <a href="https://doi.org/10.6084/m9.figshare.32128399" target="_blank">DOI: 10.6084/m9.figshare.32128399</a><br>
+        License: CC BY 4.0
         </div>
         """, unsafe_allow_html=True)
 
         st.markdown("### Filters")
         
-        # PONT 1: MANUAL FILTER
-        manual_active = st.toggle("Terrorist Attacks Only (Manual Filter)", value=False)
-        if manual_active and 'manual' in df_raw.columns:
-            df_filtered = df_raw[df_raw['manual'].str.contains("terrorist attack", case=False, na=False)].copy()
+        if year_col in df_raw.columns:
+            years = sorted(df_raw[year_col].dropna().unique().astype(int))
+            if years:
+                yr_range = st.select_slider("Period", options=years, value=(min(years), max(years)))
+                df_filtered = df_raw[(df_raw[year_col] >= yr_range[0]) & (df_raw[year_col] <= yr_range[1])].copy()
         else:
             df_filtered = df_raw.copy()
 
-        # Év szűrő
-        if 'year' in df_filtered.columns:
-            years = sorted(df_filtered['year'].dropna().unique().astype(int))
-            yr_range = st.select_slider("Period", options=years, value=(min(years), max(years)))
-            df_filtered = df_filtered[(df_filtered['year'] >= yr_range[0]) & (df_filtered['year'] <= yr_range[1])]
+        sources = sorted(df_filtered[source_col].unique()) if source_col in df_filtered.columns else []
+        selected_sources = st.multiselect("Data Source", sources, default=sources)
+        df_filtered = df_filtered[df_filtered[source_col].isin(selected_sources)]
 
-        # Forrás szűrő
-        if 'data_source' in df_filtered.columns:
-            srcs = sorted(df_filtered['data_source'].dropna().unique())
-            sel_srcs = st.multiselect("Data Source", srcs, default=srcs)
-            df_filtered = df_filtered[df_filtered['data_source'].isin(sel_srcs)]
+        actor_cats = sorted(df_filtered['actor_category'].unique())
+        selected_actors = st.multiselect("Actor Type", actor_cats, default=actor_cats)
+        df_filtered = df_filtered[df_filtered['actor_category'].isin(selected_actors)]
 
-        # Ország szűrő
-        if 'country_txt' in df_filtered.columns:
-            cntrs = sorted(df_filtered['country_txt'].dropna().unique())
-            sel_cntrs = st.multiselect("Country", cntrs, default=cntrs)
-            df_filtered = df_filtered[df_filtered['country_txt'].isin(sel_cntrs)]
+        countries = sorted(df_filtered[country_col].dropna().unique()) if country_col in df_filtered.columns else []
+        selected_countries = st.multiselect("Country", countries, default=countries)
+        df_filtered = df_filtered[df_filtered[country_col].isin(selected_countries)]
 
+        attack_types_list = sorted(df_filtered['attacktype1_txt'].fillna("N/A").unique())
+        selected_types = st.multiselect("Attack Type", attack_types_list, default=attack_types_list)
+        df_filtered = df_filtered[df_filtered['attacktype1_txt'].fillna("N/A").isin(selected_types)]
+
+        # --- EXPORT SECTION ---
         st.markdown("---")
-        st.markdown("### Export")
-        csv_exp = df_filtered.to_csv(index=False, sep=';', encoding='utf-8-sig')
-        st.download_button("Download CSV", csv_exp, "GDTD_filtered.csv", "text/csv")
-
-    # --- 4. Header & Metrics ---
-    h1, h2, h3, h4 = st.columns([2.5, 1, 1, 1])
-    with h1: st.markdown('<p class="main-title">GLOBAL DRONE<br>TERRORISM DATABASE</p>', unsafe_allow_html=True)
-    with h2: st.metric("INCIDENTS", len(df_filtered))
-    with h3: st.metric("COUNTRIES", df_filtered['country_txt'].nunique() if 'country_txt' in df_filtered.columns else 0)
-    with h4:
-        kills = pd.to_numeric(df_filtered['nkill'], errors='coerce').sum() if 'nkill' in df_filtered.columns else 0
-        st.metric("FATALITIES", int(kills if pd.notnull(kills) else 0))
-
-    st.markdown("<hr style='margin:10px 0px'>", unsafe_allow_html=True)
-
-    # --- 5. Main Map ---
-    if not df_filtered.empty:
-        df_filtered['latitude'] = pd.to_numeric(df_filtered['latitude'], errors='coerce')
-        df_filtered['longitude'] = pd.to_numeric(df_filtered['longitude'], errors='coerce')
-        df_map = df_filtered.dropna(subset=['latitude', 'longitude'])
+        st.markdown("### Export Filtered Data")
         
-        df_map['lethality'] = pd.to_numeric(df_map['nkill'], errors='coerce').fillna(0).apply(lambda x: "Fatal Attack" if x > 0 else "Non-Fatal")
+        csv_data = df_filtered.to_csv(index=False, sep=';', encoding='utf-8-sig')
+        st.download_button(
+            label="Download CSV",
+            data=csv_data,
+            file_name=f"GDTD_filtered_{pd.Timestamp.now().strftime('%Y%m%d')}.csv",
+            mime="text/csv",
+        )
 
-        fig_map = px.scatter_mapbox(
-            df_map, lat='latitude', lon='longitude', 
-            size=pd.to_numeric(df_map['nkill'], errors='coerce').fillna(0) + 3,
-            color='lethality', color_discrete_map={'Fatal Attack': '#FF8C00', 'Non-Fatal': '#00FF41'},
-            zoom=1.5, height=500, mapbox_style="carto-darkmatter",
-            hover_name='city',
-            hover_data={'formatted_date': True,
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+            df_filtered.to_excel(writer, index=False, sheet_name='Filtered_Data')
+        
+        st.download_button(
+            label="Download Excel",
+            data=buffer.getvalue(),
+            file_name=f"GDTD_filtered_{pd.Timestamp.now().strftime('%Y%m%d')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    # --- 4. Header ---
+    header_col1, header
