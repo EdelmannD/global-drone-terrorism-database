@@ -127,11 +127,13 @@ def load_data():
         
         df['formatted_date'] = df.apply(create_date, axis=1)
 
-        # Forrás oszlop harmonizálása (adatforras vagy dbsource)
+        # Forrás oszlop harmonizálása
         if 'dbsource' in df.columns:
             df.rename(columns={'dbsource': 'data_source'}, inplace=True)
         elif 'adatforras' in df.columns:
             df.rename(columns={'adatforras': 'data_source'}, inplace=True)
+        else:
+            df['data_source'] = 'Unknown'
         
         def categorize_actor(name):
             name = str(name).strip()
@@ -171,6 +173,7 @@ if not df_raw.empty:
 
         st.markdown("### Filters")
         
+        # Időszak szűrő
         if year_col in df_raw.columns:
             years = sorted(df_raw[year_col].dropna().unique().astype(int))
             if years:
@@ -179,23 +182,29 @@ if not df_raw.empty:
         else:
             df_filtered = df_raw.copy()
 
-        sources = sorted(df_filtered[source_col].unique()) if source_col in df_filtered.columns else []
-        selected_sources = st.multiselect("Data Source", sources, default=sources)
-        df_filtered = df_filtered[df_filtered[source_col].isin(selected_sources)]
+        # Forrás szűrő (TypeError FIX: stringre konvertálás rendezés előtt)
+        if source_col in df_filtered.columns:
+            sources = sorted(df_filtered[source_col].astype(str).unique())
+            selected_sources = st.multiselect("Data Source", sources, default=sources)
+            df_filtered = df_filtered[df_filtered[source_col].astype(str).isin(selected_sources)]
 
-        actor_cats = sorted(df_filtered['actor_category'].unique())
+        # Actor szűrő
+        actor_cats = sorted(df_filtered['actor_category'].astype(str).unique())
         selected_actors = st.multiselect("Actor Type", actor_cats, default=actor_cats)
-        df_filtered = df_filtered[df_filtered['actor_category'].isin(selected_actors)]
+        df_filtered = df_filtered[df_filtered['actor_category'].astype(str).isin(selected_actors)]
 
-        countries = sorted(df_filtered[country_col].dropna().unique()) if country_col in df_filtered.columns else []
-        selected_countries = st.multiselect("Country", countries, default=countries)
-        df_filtered = df_filtered[df_filtered[country_col].isin(selected_countries)]
+        # Ország szűrő
+        if country_col in df_filtered.columns:
+            countries = sorted(df_filtered[country_col].dropna().astype(str).unique())
+            selected_countries = st.multiselect("Country", countries, default=countries)
+            df_filtered = df_filtered[df_filtered[country_col].astype(str).isin(selected_countries)]
 
+        # Attack type szűrő
         attack_types_col = 'attacktype1_txt'
         if attack_types_col in df_filtered.columns:
-            attack_types_list = sorted(df_filtered[attack_types_col].fillna("N/A").unique())
+            attack_types_list = sorted(df_filtered[attack_types_col].fillna("N/A").astype(str).unique())
             selected_types = st.multiselect("Attack Type", attack_types_list, default=attack_types_list)
-            df_filtered = df_filtered[df_filtered[attack_types_col].fillna("N/A").isin(selected_types)]
+            df_filtered = df_filtered[df_filtered[attack_types_col].fillna("N/A").astype(str).isin(selected_types)]
 
         # --- EXPORT SECTION ---
         st.markdown("---")
@@ -324,4 +333,4 @@ if not df_raw.empty:
         </div>
     """, unsafe_allow_html=True)
 else:
-    st.error("Dataset error. Please check your CSV file (Acled_GTD_Drone_Database_20260509.csv).")
+    st.error("Dataset error. Please check your CSV file.")
